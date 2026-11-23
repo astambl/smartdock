@@ -5,6 +5,7 @@
 > - **Keyboard snapping without root:** the snap keyboard shortcuts now use Shizuku, so they work on devices that aren't rooted.
 > - **Half-screen launch modes:** new Launch mode options (*Half screen (centre)*, *Half screen (left)* and *Half screen (right)*) open apps at half the screen width and full height.
 > - **Swipe to snap:** swipe left or right on the dock to snap the active window to that half of the screen. This replaces the swipe-left-for-Back gesture while a window is open.
+> - **Swipe up for full screen:** swipe up on the dock to make the active window full screen.
 > - **Snapping full-screen apps:** swiping or keyboard snapping also works on full-screen apps, which become floating windows.
 > - **Fixed signing key:** debug builds are signed with a key committed to this repo (`app/debug.keystore`), so new builds install over old ones.
 >

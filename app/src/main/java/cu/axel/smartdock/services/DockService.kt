@@ -111,6 +111,7 @@ import cu.axel.smartdock.models.App
 import cu.axel.smartdock.models.AppTask
 import cu.axel.smartdock.models.DockApp
 import cu.axel.smartdock.models.WINDOWING_MODE_FREEFORM
+import cu.axel.smartdock.models.WINDOWING_MODE_FULLSCREEN
 import cu.axel.smartdock.preferences.NAV_LONG_ACTIONS
 import cu.axel.smartdock.receivers.BatteryStatsReceiver
 import cu.axel.smartdock.receivers.SoundEventsReceiver
@@ -2167,6 +2168,9 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 } else if (direction == Direction.RIGHT) {
                     if (tasks.isNotEmpty())
                         snapTask(tasks[0], "tiled-right")
+                } else if (direction == Direction.UP) {
+                    if (tasks.isNotEmpty() && tasks[0].windowingMode != WINDOWING_MODE_FULLSCREEN)
+                        launchApp("fullscreen", tasks[0].packageName, rememberMode = false)
                 }
                 return true
             }
