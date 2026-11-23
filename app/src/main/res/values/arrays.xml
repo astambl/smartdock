@@ -33,12 +33,16 @@
         <item>@string/maximized</item>
         <item>@string/portrait</item>
         <item>@string/fullscreen</item>
+        <item>@string/half_screen_left</item>
+        <item>@string/half_screen_right</item>
     </string-array>
     <string-array name="launch_mode_values">
         <item>standard</item>
         <item>maximized</item>
         <item>portrait</item>
         <item>fullscreen</item>
+        <item>tiled-left</item>
+        <item>tiled-right</item>
     </string-array>
 	
 	<string-array name="layouts">
