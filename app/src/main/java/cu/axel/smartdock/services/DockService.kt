@@ -660,7 +660,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                                 rememberMode = false
                             )
                         else
-                            resizeTaskTo(task.id, "tiled-left")
+                            snapTask(task, "tiled-left")
                         return true
                     }
                 } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -674,7 +674,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                                 rememberMode = false
                             )
                         else
-                            resizeTaskTo(task.id, "tiled-right")
+                            snapTask(task, "tiled-right")
                         return true
                     }
                 } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
@@ -1192,6 +1192,17 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             }
         }
         windowManager.addView(view, layoutParams)
+    }
+
+    private fun snapTask(task: AppTask, mode: String) {
+        if (task.windowingMode == WINDOWING_MODE_FREEFORM) {
+            resizeTaskTo(task.id, mode)
+            return
+        }
+        // Full-screen windows can't be resized: reopen the app as a floating
+        // window at the snapped position, then resize to be sure it took
+        launchApp(mode, task.packageName, rememberMode = false)
+        dockHandler.postDelayed({ resizeTaskTo(task.id, mode) }, 400)
     }
 
     private fun resizeTaskTo(taskId: Int, mode: String) {
@@ -2150,12 +2161,12 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     if (appMenuVisible) hideAppMenu() else unpinDock()
                 } else if (direction == Direction.LEFT) {
                     if (tasks.isNotEmpty())
-                        resizeTaskTo(tasks[0].id, "tiled-left")
+                        snapTask(tasks[0], "tiled-left")
                     else
                         performGlobalAction(GLOBAL_ACTION_BACK)
                 } else if (direction == Direction.RIGHT) {
                     if (tasks.isNotEmpty())
-                        resizeTaskTo(tasks[0].id, "tiled-right")
+                        snapTask(tasks[0], "tiled-right")
                 }
                 return true
             }
