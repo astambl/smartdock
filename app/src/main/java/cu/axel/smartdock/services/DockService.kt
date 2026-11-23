@@ -634,9 +634,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 else if (event.keyCode == KeyEvent.KEYCODE_F3) {
                     if (tasks.isNotEmpty()) {
                         val task = tasks[0]
-                        AppUtils.resizeTask(
-                            context, "portrait", task.id, dockHeight
-                        )
+                        resizeTaskTo(task.id, "portrait")
                     }
                 } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                     if (tasks.isNotEmpty()) {
@@ -649,9 +647,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                                 rememberMode = false
                             )
                         else
-                            AppUtils.resizeTask(
-                                context, "maximized", task.id, dockHeight
-                            )
+                            resizeTaskTo(task.id, "maximized")
                     }
                 } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
                     if (tasks.isNotEmpty()) {
@@ -664,9 +660,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                                 rememberMode = false
                             )
                         else
-                            AppUtils.resizeTask(
-                                context, "tiled-left", task.id, dockHeight
-                            )
+                            resizeTaskTo(task.id, "tiled-left")
                         return true
                     }
                 } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -680,9 +674,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                                 rememberMode = false
                             )
                         else
-                            AppUtils.resizeTask(
-                                context, "tiled-right", task.id, dockHeight
-                            )
+                            resizeTaskTo(task.id, "tiled-right")
                         return true
                     }
                 } else if (event.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
@@ -696,9 +688,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                                 rememberMode = false
                             )
                         else
-                            AppUtils.resizeTask(
-                                context, "standard", task.id, dockHeight
-                            )
+                            resizeTaskTo(task.id, "standard")
                     }
                 } else if (event.isShiftPressed) {
                     val index = when (event.keyCode) {
@@ -1097,6 +1087,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         }
         val actionsLv = view.findViewById<ListView>(R.id.tasks_lv)
         actionsLv.adapter = AppActionsAdapter(context, getDockAppActions(app))
+        var inSnapMenu = false
         actionsLv.setOnItemClickListener { adapterView, _, position, _ ->
             if (adapterView.getItemAtPosition(position) is Action) {
                 val action = adapterView.getItemAtPosition(position) as Action
@@ -1111,6 +1102,18 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     loadPinnedApps()
                     if (isPinned)
                         updateRunningTasks()
+                    windowManager.removeView(view)
+                } else if (action.text == getString(R.string.left) && inSnapMenu) {
+                    activityManagerWrapper?.resizeTask(
+                        app.tasks[0].id,
+                        AppUtils.makeLaunchBounds(this, "tiled-left", dockHeight)
+                    )
+                    windowManager.removeView(view)
+                } else if (action.text == getString(R.string.right) && inSnapMenu) {
+                    activityManagerWrapper?.resizeTask(
+                        app.tasks[0].id,
+                        AppUtils.makeLaunchBounds(this, "tiled-right", dockHeight)
+                    )
                     windowManager.removeView(view)
                 } else if (action.text == getString(R.string.left)) {
                     AppUtils.moveApp(this, app, AppUtils.DOCK_PINNED_LIST, 0)
@@ -1135,6 +1138,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     actions.add(Action(R.drawable.ic_fullscreen, getString(R.string.fullscreen)))
                     actionsLv.adapter = AppActionsAdapter(context, actions)
                 } else if (action.text == getString(R.string.snap)) {
+                    inSnapMenu = true
                     val actions = ArrayList<Action>()
                     actions.add(Action(R.drawable.ic_arrow_back, ""))
                     actions.add(Action(R.drawable.ic_snap_top, getString(R.string.top)))
@@ -1182,11 +1186,21 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     activityManagerWrapper?.removeTask(app.tasks[0].id)
                     windowManager.removeView(view)
                 } else if (action.text.isBlank()) {
+                    inSnapMenu = false
                     actionsLv.adapter = AppActionsAdapter(context, getDockAppActions(app))
                 }
             }
         }
         windowManager.addView(view, layoutParams)
+    }
+
+    private fun resizeTaskTo(taskId: Int, mode: String) {
+        if (taskId < 0) return
+        val bounds = AppUtils.makeLaunchBounds(context, mode, dockHeight)
+        if (activityManagerWrapper != null && DeviceUtils.hasShizukuPermission())
+            activityManagerWrapper?.resizeTask(taskId, bounds)
+        else
+            AppUtils.resizeTask(context, mode, taskId, dockHeight)
     }
 
     @SuppressLint("ClickableViewAccessibility")
