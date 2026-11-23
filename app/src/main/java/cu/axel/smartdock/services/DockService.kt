@@ -2149,7 +2149,13 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 if (direction == Direction.DOWN) {
                     if (appMenuVisible) hideAppMenu() else unpinDock()
                 } else if (direction == Direction.LEFT) {
-                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    if (tasks.isNotEmpty())
+                        resizeTaskTo(tasks[0].id, "tiled-left")
+                    else
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                } else if (direction == Direction.RIGHT) {
+                    if (tasks.isNotEmpty())
+                        resizeTaskTo(tasks[0].id, "tiled-right")
                 }
                 return true
             }
