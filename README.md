@@ -1,3 +1,15 @@
+> **This is a personal fork of [axel358/smartdock](https://github.com/axel358/smartdock).**
+> It adds the following on top of the original:
+>
+> - **Snap Left/Right fixed:** in the dock app menu, Snap → Left/Right now snaps the window. Before, it moved the app's dock icon instead.
+> - **Keyboard snapping without root:** the snap keyboard shortcuts now use Shizuku, so they work on devices that aren't rooted.
+> - **Half-screen launch modes:** new Launch mode options (*Half screen (centre)*, *Half screen (left)* and *Half screen (right)*) open apps at half the screen width and full height.
+> - **Swipe to snap:** swipe left or right on the dock to snap the active window to that half of the screen. This replaces the swipe-left-for-Back gesture while a window is open.
+> - **Snapping full-screen apps:** swiping or keyboard snapping also works on full-screen apps, which become floating windows.
+> - **Fixed signing key:** debug builds are signed with a key committed to this repo (`app/debug.keystore`), so new builds install over old ones.
+>
+> Builds: run **Actions → Build debug apk** and download the `apk-debug` artifact.
+
 <div align="center">
   <h1>Smart Dock</h1>
   A user-friendly desktop mode launcher that offers a modern and customizable user interface
