@@ -340,6 +340,7 @@
     <string name="dock_elements_portrait">ਡੌਕ ਐਲੀਮੈਂਟਸ (ਪੋਰਟਰੇਟ)</string>
     <string name="dock_elements_landscape">ਡੌਕ ਐਲੀਮੈਂਟਸ (ਲੈਂਡਸਕੇਪ)</string>
 
+    <string name="half_screen_center">ਅੱਧੀ ਸਕ੍ਰੀਨ (ਵਿਚਕਾਰ)</string>
     <string name="half_screen_left">ਅੱਧੀ ਸਕ੍ਰੀਨ (ਖੱਬੇ)</string>
     <string name="half_screen_right">ਅੱਧੀ ਸਕ੍ਰੀਨ (ਸੱਜੇ)</string>
 </resources>

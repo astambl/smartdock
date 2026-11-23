@@ -116,6 +116,7 @@
     <string name="handle_position">Handle position</string>
     <string name="left">Left</string>
     <string name="right">Right</string>
+    <string name="half_screen_center">Half screen (centre)</string>
     <string name="half_screen_left">Half screen (left)</string>
     <string name="half_screen_right">Half screen (right)</string>
     <string name="auto_pin_title">Auto pin</string>

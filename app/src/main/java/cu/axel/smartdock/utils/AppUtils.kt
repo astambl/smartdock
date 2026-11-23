@@ -327,6 +327,12 @@ object AppUtils {
                 bottom = usableHeight
             }
 
+            "tiled-center" -> {
+                left = deviceWidth / 4
+                right = deviceWidth - left
+                bottom = usableHeight
+            }
+
             "tiled-top" -> {
                 right = deviceWidth
                 bottom = (usableHeight + statusBarHeight) / 2

@@ -33,6 +33,7 @@
         <item>@string/maximized</item>
         <item>@string/portrait</item>
         <item>@string/fullscreen</item>
+        <item>@string/half_screen_center</item>
         <item>@string/half_screen_left</item>
         <item>@string/half_screen_right</item>
     </string-array>
@@ -41,6 +42,7 @@
         <item>maximized</item>
         <item>portrait</item>
         <item>fullscreen</item>
+        <item>tiled-center</item>
         <item>tiled-left</item>
         <item>tiled-right</item>
     </string-array>
