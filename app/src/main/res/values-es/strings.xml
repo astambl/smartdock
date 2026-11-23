@@ -337,4 +337,6 @@
     <string name="dock_elements_portrait">Elementos del Dock(portrait)</string>
     <string name="dock_elements_landscape">Elementos del Dock(landscape)</string>
 
+    <string name="half_screen_left">Media pantalla (izquierda)</string>
+    <string name="half_screen_right">Media pantalla (derecha)</string>
 </resources>
