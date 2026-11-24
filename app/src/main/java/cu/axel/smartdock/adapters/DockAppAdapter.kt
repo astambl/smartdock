@@ -92,7 +92,7 @@ class DockAppAdapter(
                 ColorUtils.getDrawableDominantColor(viewHolder.iconIv.drawable)
             )
         }
-        viewHolder.bind(app, listener)
+        viewHolder.bind(app, listener, iconSwipesEnabled)
     }
 
     override fun getItemCount(): Int {
@@ -109,7 +109,7 @@ class DockAppAdapter(
         var taskCounter: TextView = itemView.findViewById(R.id.task_count_badge)
         var runningIndicator: View = itemView.findViewById(R.id.running_indicator)
 
-        fun bind(app: DockApp, listener: OnDockAppClickListener) {
+        fun bind(app: DockApp, listener: OnDockAppClickListener, iconSwipesEnabled: Boolean) {
             itemView.setOnClickListener { view -> listener.onDockAppClicked(app, view) }
             itemView.setOnLongClickListener { view ->
                 listener.onDockAppLongClicked(app, view)
