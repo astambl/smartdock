@@ -34,7 +34,6 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.UserManager
 import java.io.File
-import kotlin.math.abs
 import android.hardware.display.DisplayManager
 import android.hardware.usb.UsbManager
 import android.media.AudioManager
@@ -61,6 +60,7 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.View.OnTouchListener
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
@@ -475,8 +475,22 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     override fun onDockAppClicked(app: DockApp, anchor: View) {
-        app.pair?.let {
-            launchPair(it)
+        app.pair?.let { pair ->
+            val pending = pendingPairTap
+            if (pending != null && pendingPairKey == app.packageName) {
+                dockHandler.removeCallbacks(pending)
+                pendingPairTap = null
+                swapPair(pair)
+            } else {
+                pending?.let { dockHandler.removeCallbacks(it) }
+                val open = Runnable {
+                    pendingPairTap = null
+                    launchPair(pair)
+                }
+                pendingPairTap = open
+                pendingPairKey = app.packageName
+                dockHandler.postDelayed(open, ViewConfiguration.getDoubleTapTimeout().toLong())
+            }
             return
         }
         val tasks = app.tasks
@@ -1690,6 +1704,18 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         return BitmapDrawable(resources, bitmap)
     }
 
+    private var pendingPairTap: Runnable? = null
+    private var pendingPairKey: String? = null
+
+    /** Puts the pair's apps on opposite sides from where they are now */
+    private fun swapPair(pair: List<App>) {
+        val firstTask = tasks.firstOrNull {
+            it.packageName == pair[0].packageName && it.userHandle == pair[0].userHandle
+        }
+        val firstOnLeft = firstTask == null || lastSnap[firstTask.id] != "tiled-right"
+        launchPair(if (firstOnLeft) pair.reversed() else pair)
+    }
+
     /** Opens both apps of a pair side by side */
     private fun launchPair(pair: List<App>) {
         pair.forEachIndexed { i, pairApp ->
@@ -2294,35 +2320,9 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         dockLayout.background.alpha = alpha
     }
 
-    private var barDownX = 0f
-    private var barDownY = 0f
-    private var barSwipedDown = false
-
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
-        // Swipe down on the bar: act after a short drag, since the dock sits at the
-        // bottom edge and there's little room to fling
-        when (motionEvent.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                barDownX = motionEvent.rawX
-                barDownY = motionEvent.rawY
-                barSwipedDown = false
-            }
-
-            MotionEvent.ACTION_MOVE -> {
-                val dx = motionEvent.rawX - barDownX
-                val dy = motionEvent.rawY - barDownY
-                if (!barSwipedDown && dy > Utils.dpToPx(context, 6) && dy > abs(dx)) {
-                    barSwipedDown = true
-                    onBarSwipeDown()
-                }
-            }
-        }
         gestureDetector.onTouchEvent(motionEvent)
         return false
-    }
-
-    private fun onBarSwipeDown() {
-        if (appMenuVisible) hideAppMenu() else if (!swapSides()) unpinDock()
     }
 
     override fun onDestroy() {
@@ -2413,7 +2413,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         gestureDetector = GestureDetector(context, object : OnSwipeListener() {
             override fun onSwipe(direction: Direction): Boolean {
                 if (direction == Direction.DOWN) {
-                    if (!barSwipedDown) onBarSwipeDown()
+                    if (appMenuVisible) hideAppMenu() else unpinDock()
                 } else if (direction == Direction.LEFT) {
                     if (tasks.isNotEmpty())
                         snapTask(tasks[0], "tiled-left")
@@ -2426,6 +2426,11 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     if (tasks.isNotEmpty())
                         fullscreenTask(tasks[0])
                 }
+                return true
+            }
+
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                swapSides()
                 return true
             }
         })
