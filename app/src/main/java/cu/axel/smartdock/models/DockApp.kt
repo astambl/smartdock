@@ -29,5 +29,5 @@ class DockApp : App {
     }
 
     override val icon: Drawable
-        get() = if (tasks.size == 1) tasks[0].icon else super.icon
+        get() = if (tasks.size == 1 && pair == null) tasks[0].icon else super.icon
 }

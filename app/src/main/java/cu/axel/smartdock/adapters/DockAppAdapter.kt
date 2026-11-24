@@ -26,6 +26,7 @@ class DockAppAdapter(
     private val iconPadding: Int
     private val iconTheming: Boolean
     private val tintIndicators: Boolean
+    private val iconSwipesEnabled: Boolean
 
     interface OnDockAppClickListener {
         fun onDockAppClicked(app: DockApp, view: View)
@@ -36,6 +37,8 @@ class DockAppAdapter(
     init {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         iconTheming = sharedPreferences.getString("icon_pack", "") != ""
+        iconSwipesEnabled = sharedPreferences.getBoolean("fork_icon_swipes", true) ||
+                sharedPreferences.getBoolean("fork_icon_swipe_close", true)
         iconPadding =
             Utils.dpToPx(context, sharedPreferences.getString("icon_padding", "5")!!.toInt())
         tintIndicators = sharedPreferences.getBoolean("tint_indicators", false)
@@ -63,8 +66,10 @@ class DockAppAdapter(
                 )
 
             viewHolder.runningIndicator.alpha = if (app.tasks[0].id != -1) 1f else 0f
+            val isCurrent = app.packageName == AppUtils.currentApp ||
+                    app.pair?.any { it.packageName == AppUtils.currentApp } == true
             viewHolder.runningIndicator.layoutParams.width =
-                Utils.dpToPx(context, if (app.packageName == AppUtils.currentApp) 16 else 8)
+                Utils.dpToPx(context, if (isCurrent) 16 else 8)
 
             if (size > 1) {
                 viewHolder.taskCounter.text = size.toString()
@@ -121,6 +126,7 @@ class DockAppAdapter(
                     listener.onDockAppLongClicked(app, view)
                     return@setOnTouchListener true
                 }
+                if (!iconSwipesEnabled) return@setOnTouchListener false
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         downX = event.rawX

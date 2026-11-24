@@ -8,11 +8,13 @@
 > - **Swipe up for full screen:** swipe up on the dock to make the active window full screen. Swipe up again to send it back to the half it came from.
 > - **Swipe on app icons:** swipe left, right or up on a dock icon to snap *that* app left, right or full screen. It opens the app in that position if it isn't running yet. Swipe up again to toggle back to its half, and swipe down to close that app's window. The icon row no longer scrolls sideways.
 > - **New apps open in the empty half (Duo-style):** with a half-screen launch mode, a new app opens in the half the current window isn't using. A centred window moves to the left to make room.
-> - **App pairs:** long-press a dock icon → *Pair with…* → pick a second app. The pair appears in the dock as a combined icon, and tapping it opens both side by side. Long-press the pair → *Unpair* to remove it.
+> - **App pairs:** long-press a dock icon → *Pair with…* → pick a second app. The pair appears in the dock as a combined icon, and tapping it opens both side by side. Long-press the pair to *Move* it or *Unpair* it. Swipe down on a pair to close both apps. Apps in a pair are hidden from the dock, and their open windows appear under the pair icon.
 > - **Swap sides:** double-tap the empty part of the dock to swap the left and right windows, or move a single half window to the other side. Double-tap an app pair icon to swap that pair's sides.
 > - **Work profile support:** work-profile windows show in the dock, and all snapping and swipe actions work on work-profile apps (e.g. Teams).
 > - **Snapping full-screen apps:** swiping or keyboard snapping also works on full-screen apps, which become floating windows.
 > - **Fixed signing key:** debug builds are signed with a key committed to this repo (`app/debug.keystore`), so new builds install over old ones.
+>
+> All of these can be turned on or off in **Settings → Multitasking**.
 >
 > Builds: run **Actions → Build debug apk** and download the `apk-debug` artifact.
 

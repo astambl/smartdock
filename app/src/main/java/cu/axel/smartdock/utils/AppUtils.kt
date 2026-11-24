@@ -88,7 +88,7 @@ object AppUtils {
         val userManager = context.getSystemService(Context.USER_SERVICE) as UserManager
         if (file.exists()) {
             for (line in file.readLines()) {
-                if (line.isBlank()) continue
+                if (line.isBlank() || line.startsWith("pair:")) continue
                 val info = line.split(" ")
                 val packageName = info[0]
                 val userHandle = userManager.getUserForSerialNumber(info[1].toLong())

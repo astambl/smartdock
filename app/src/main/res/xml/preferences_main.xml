@@ -14,6 +14,10 @@
         android:fragment="cu.axel.smartdock.fragments.DockPreferences"
         android:title="@string/dock" />
 	<cu.axel.smartdock.preferences.PreferenceHeader
+        android:icon="@drawable/ic_snap_left"
+        android:fragment="cu.axel.smartdock.fragments.MultitaskingPreferences"
+        android:title="@string/fork_multitasking" />
+	<cu.axel.smartdock.preferences.PreferenceHeader
         android:icon="@drawable/ic_desktop"
         android:fragment="cu.axel.smartdock.fragments.DesktopPreferences"
         android:title="@string/desktop" />
