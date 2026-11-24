@@ -700,15 +700,38 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         }
     }
 
+    /**
+     * Keyboard windows on any display. With a second screen (e.g. the Titan 2's rear
+     * display) the plain window list may describe the other display, so search all.
+     */
+    private fun imeWindows(debug: StringBuilder? = null): List<AccessibilityWindowInfo> {
+        val result = ArrayList<AccessibilityWindowInfo>()
+        try {
+            val all = windowsOnAllDisplays
+            for (i in 0 until all.size()) {
+                val displayId = all.keyAt(i)
+                val list = all.valueAt(i)
+                val imes = list.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+                debug?.append("display $displayId: ${list.size} windows, ${imes.size} keyboard\n")
+                // Keyboards on the main display come first
+                if (displayId == Display.DEFAULT_DISPLAY) result.addAll(0, imes) else result.addAll(imes)
+            }
+        } catch (_: Exception) {
+        }
+        if (result.isEmpty())
+            try {
+                result.addAll(windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD })
+            } catch (_: Exception) {
+            }
+        return result
+    }
+
     /** Height of the on-screen keyboard, or 0 when none is showing */
     private fun keyboardHeight(): Int {
-        val imeWindows = try {
-            windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-        } catch (_: Exception) {
-            emptyList()
-        }
         val screenHeight = windowManager.currentWindowMetrics.bounds.height()
-        val debug = StringBuilder("screen h=$screenHeight  ime windows=${imeWindows.size}\n")
+        val debug = StringBuilder()
+        val imeWindows = imeWindows(debug)
+        debug.insert(0, "screen h=$screenHeight  ime windows=${imeWindows.size}\n")
         var result = 0
         for (ime in imeWindows) {
             val windowBounds = Rect()
@@ -804,11 +827,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     private val keyboardPoll: Runnable = object : Runnable {
         override fun run() {
             updateDockForKeyboard()
-            val imeWindowOpen = try {
-                windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-            } catch (_: Exception) {
-                false
-            }
+            val imeWindowOpen = imeWindows().isNotEmpty()
             keyboardPollRunning = imeWindowOpen || keyboardLift != 0 || hiddenForKeyboard ||
                     sharedPreferences.getBoolean("fork_debug_keyboard", false)
             if (keyboardPollRunning) dockHandler.postDelayed(this, 500)
