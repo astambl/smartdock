@@ -29,6 +29,7 @@ import android.content.pm.ShortcutInfo
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Rect
 import android.graphics.PorterDuff
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -677,25 +678,46 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     private var hiddenForKeyboard = false
+    private var keyboardLift = 0
 
-    /** Hides the dock while an on-screen keyboard is showing, so it doesn't cover it */
+    /** Height of the on-screen keyboard, or 0 when none is showing */
+    private fun keyboardHeight(): Int {
+        val ime = try {
+            windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+        } catch (_: Exception) {
+            null
+        } ?: return 0
+        val bounds = Rect()
+        if (Build.VERSION.SDK_INT >= 33) {
+            // Touchable area is the keyboard itself, not any transparent space above it
+            val region = android.graphics.Region()
+            ime.getRegionInScreen(region)
+            bounds.set(region.bounds)
+        }
+        if (bounds.isEmpty) ime.getBoundsInScreen(bounds)
+        val screenHeight = windowManager.currentWindowMetrics.bounds.height()
+        val height = screenHeight - bounds.top
+        // Ignore nonsense values (e.g. a full-screen keyboard window)
+        return if (bounds.isEmpty || height <= 0 || height > screenHeight * 0.75) 0 else height
+    }
+
+    /** Keeps the dock clear of the on-screen keyboard: move it above, hide it, or leave it */
     private fun updateDockForKeyboard() {
         val dockView = dock ?: return
-        val keyboardShown = sharedPreferences.getBoolean("fork_hide_dock_keyboard", true) &&
-                try {
-                    windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-                } catch (_: Exception) {
-                    false
-                }
-        if (keyboardShown == hiddenForKeyboard) return
-        hiddenForKeyboard = keyboardShown
-        if (keyboardShown) {
-            dockView.visibility = View.GONE
-            dockLayoutParams.flags = dockLayoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-        } else {
-            dockView.visibility = View.VISIBLE
-            dockLayoutParams.flags = dockLayoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-        }
+        if (!::dockLayoutParams.isInitialized) return
+        val mode = sharedPreferences.getString("fork_keyboard_mode", "above")!!
+        val height = if (mode == "top") 0 else keyboardHeight()
+        val hide = mode == "hide" && height > 0
+        val lift = if (mode == "above") height else 0
+        if (hide == hiddenForKeyboard && lift == keyboardLift) return
+        hiddenForKeyboard = hide
+        keyboardLift = lift
+        dockView.visibility = if (hide) View.GONE else View.VISIBLE
+        dockLayoutParams.flags = if (hide)
+            dockLayoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        else
+            dockLayoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        dockLayoutParams.y = lift
         try {
             windowManager.updateViewLayout(dockView, dockLayoutParams)
         } catch (_: Exception) {
