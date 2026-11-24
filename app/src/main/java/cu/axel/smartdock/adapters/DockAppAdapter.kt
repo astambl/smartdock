@@ -8,7 +8,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import kotlin.math.abs
-import kotlin.math.max
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.RecyclerView
 import cu.axel.smartdock.R
@@ -112,8 +111,11 @@ class DockAppAdapter(
                 true
             }
             val swipeThreshold = Utils.dpToPx(itemView.context, 30)
+            // The dock sits at the bottom edge, so there's little room to swipe down
+            val downSwipeThreshold = Utils.dpToPx(itemView.context, 10)
             var downX = 0f
             var downY = 0f
+            var swiped = false
             itemView.setOnTouchListener { view, event ->
                 if (event.buttonState == MotionEvent.BUTTON_SECONDARY) {
                     listener.onDockAppLongClicked(app, view)
@@ -123,23 +125,37 @@ class DockAppAdapter(
                     MotionEvent.ACTION_DOWN -> {
                         downX = event.rawX
                         downY = event.rawY
+                        swiped = false
                         // Keep the icon row from scrolling so swipes reach the icon
                         view.parent?.requestDisallowInterceptTouchEvent(true)
                     }
 
-                    MotionEvent.ACTION_UP -> {
+                    MotionEvent.ACTION_MOVE -> {
+                        if (swiped) return@setOnTouchListener true
                         val dx = event.rawX - downX
                         val dy = event.rawY - downY
-                        if (max(abs(dx), abs(dy)) > swipeThreshold) {
-                            val direction = if (abs(dx) > abs(dy)) {
+                        val direction = if (abs(dx) > abs(dy)) {
+                            if (abs(dx) > swipeThreshold)
                                 if (dx > 0) Direction.RIGHT else Direction.LEFT
-                            } else {
-                                if (dy < 0) Direction.UP else Direction.DOWN
-                            }
+                            else null
+                        } else if (dy < 0 && -dy > swipeThreshold) Direction.UP
+                        else if (dy > 0 && dy > downSwipeThreshold) Direction.DOWN
+                        else null
+                        if (direction != null) {
+                            // Act as soon as the swipe is long enough, before the
+                            // finger leaves the dock or the system takes the gesture
+                            swiped = true
                             view.cancelLongPress()
                             view.isPressed = false
                             listener.onDockAppSwiped(app, direction)
-                            // Swallow the release so a swipe never counts as a tap
+                            return@setOnTouchListener true
+                        }
+                    }
+
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        // Swallow the release so a swipe never counts as a tap
+                        if (swiped) {
+                            swiped = false
                             return@setOnTouchListener true
                         }
                     }
