@@ -341,6 +341,10 @@ object AppUtils {
         }
     }
 
+    /** Measured top edge of the pinned dock on the main screen; windows end exactly here */
+    @Volatile
+    var dockTopOnScreen: Int? = null
+
     fun makeLaunchBounds(
         context: Context, mode: String, dockHeight: Int, displayId: Int = Display.DEFAULT_DISPLAY
     ): Rect {
@@ -408,6 +412,14 @@ object AppUtils {
                 top = (usableHeight + statusBarHeight) / 2
                 bottom = usableHeight + statusBarHeight
             }
+        }
+        // Make windows meet the dock exactly, using where the dock really is
+        val dockTop = dockTopOnScreen
+        if (dockTop != null && displayId == Display.DEFAULT_DISPLAY && dockTop > top) {
+            if (mode in listOf("maximized", "tiled-left", "tiled-right", "tiled-center", "tiled-bottom"))
+                bottom = dockTop
+            else if (bottom > dockTop)
+                bottom = dockTop
         }
         return Rect(left, top, right, bottom)
     }

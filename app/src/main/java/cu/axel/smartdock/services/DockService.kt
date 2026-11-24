@@ -36,6 +36,7 @@ import android.graphics.drawable.Drawable
 import android.os.UserHandle
 import android.os.UserManager
 import java.io.File
+import kotlin.math.abs
 import android.hardware.display.DisplayManager
 import android.hardware.usb.UsbManager
 import android.media.AudioManager
@@ -679,6 +680,25 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
     private var hiddenForKeyboard = false
     private var keyboardLift = 0
+
+    /** Records where the dock's top edge is, and re-fits snapped windows if it moved */
+    private fun updateDockTop() {
+        val dockView = dock ?: return
+        val newTop = if (isPinned && dockView.visibility == View.VISIBLE && dockView.height > 0) {
+            val location = IntArray(2)
+            dockView.getLocationOnScreen(location)
+            // Ignore the temporary lift above the keyboard
+            location[1] + keyboardLift
+        } else null
+        val oldTop = AppUtils.dockTopOnScreen
+        if (newTop == oldTop) return
+        AppUtils.dockTopOnScreen = newTop
+        if (oldTop == null || newTop == null || abs(newTop - oldTop) < 2) return
+        // Dock size changed: re-fit windows that are snapped to a half
+        tasks.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }.forEach { task ->
+            lastSnap[task.id]?.let { resizeTaskTo(task.id, it) }
+        }
+    }
 
     /** Height of the on-screen keyboard, or 0 when none is showing */
     private fun keyboardHeight(): Int {
@@ -2696,6 +2716,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
         dockLayoutParams.gravity = Gravity.BOTTOM or Gravity.START
         windowManager.addView(dock, dockLayoutParams)
+        dock!!.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateDockTop() }
 
         //Dock handle
         handleLayoutParams = Utils.makeWindowParams(
