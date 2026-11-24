@@ -714,28 +714,6 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 val list = all.valueAt(i)
                 val imes = list.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
                 debug?.append("display $displayId: ${list.size} windows, ${imes.size} keyboard\n")
-                if (debug != null)
-                    for (w in list) {
-                        val b = Rect()
-                        w.getBoundsInScreen(b)
-                        val r = android.graphics.Region()
-                        if (Build.VERSION.SDK_INT >= 33) w.getRegionInScreen(r)
-                        val typeName = when (w.type) {
-                            AccessibilityWindowInfo.TYPE_APPLICATION -> "app"
-                            AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "ime"
-                            AccessibilityWindowInfo.TYPE_SYSTEM -> "system"
-                            AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "a11y"
-                            AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER -> "divider"
-                            AccessibilityWindowInfo.TYPE_MAGNIFICATION_OVERLAY -> "magnify"
-                            else -> "type${w.type}"
-                        }
-                        val pkg = try {
-                            w.root?.packageName ?: "-"
-                        } catch (_: Exception) {
-                            "?"
-                        }
-                        debug.append(" $typeName '${w.title ?: ""}' $pkg ${b.toShortString()} r=${r.bounds.toShortString()}\n")
-                    }
                 // Keyboards on the main display come first
                 if (displayId == Display.DEFAULT_DISPLAY) result.addAll(0, imes) else result.addAll(imes)
             }
@@ -772,10 +750,12 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             if (!bounds.isEmpty && height > 0 && height <= screenHeight * 0.75)
                 result = maxOf(result, height)
         }
-        val typing = try {
-            findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
-        } catch (_: Exception) {
-            false
+        val typing = isTypingInTextField()
+        // Keyboards like Plektra (bar-only, for physical keyboards) don't appear in the
+        // window list. When typing with no keyboard reported, assume such a bar is showing.
+        if (result == 0 && typing) {
+            val liftDp = sharedPreferences.getInt("fork_typing_lift", 0)
+            result = if (liftDp > 0) Utils.dpToPx(context, liftDp) else (dock?.height ?: 0)
         }
         debug.append("typing in text field=$typing\n")
         debug.append("keyboard h=$result  lift=$keyboardLift  hidden=$hiddenForKeyboard  " +
@@ -783,6 +763,12 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 "dock h=${dock?.height}  dockTop=${AppUtils.dockTopOnScreen}")
         showKeyboardDebug(debug.toString())
         return result
+    }
+
+    private fun isTypingInTextField() = try {
+        findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
+    } catch (_: Exception) {
+        false
     }
 
     private var keyboardDebugView: TextView? = null
@@ -858,6 +844,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             updateDockForKeyboard()
             val imeWindowOpen = imeWindows().isNotEmpty()
             keyboardPollRunning = imeWindowOpen || keyboardLift != 0 || hiddenForKeyboard ||
+                    isTypingInTextField() ||
                     sharedPreferences.getBoolean("fork_debug_keyboard", false)
             if (keyboardPollRunning) dockHandler.postDelayed(this, 500)
         }

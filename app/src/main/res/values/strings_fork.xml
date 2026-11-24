@@ -38,4 +38,6 @@
     <string name="fork_troubleshooting">Troubleshooting</string>
     <string name="fork_debug_keyboard_title">Show keyboard diagnostics</string>
     <string name="fork_debug_keyboard_summary">Shows what SmartDock detects about the keyboard at the top of the screen</string>
+    <string name="fork_typing_lift_title">Keyboard bar height (dp)</string>
+    <string name="fork_typing_lift_summary">For keyboard bars Android doesn\'t report, like Plektra with a physical keyboard: how far to lift the dock while typing. 0 = same as the dock\'s height</string>
 </resources>
