@@ -112,7 +112,7 @@ class DockAppAdapter(
             }
             val swipeThreshold = Utils.dpToPx(itemView.context, 30)
             // The dock sits at the bottom edge, so there's little room to swipe down
-            val downSwipeThreshold = Utils.dpToPx(itemView.context, 10)
+            val downSwipeThreshold = Utils.dpToPx(itemView.context, 6)
             var downX = 0f
             var downY = 0f
             var swiped = false

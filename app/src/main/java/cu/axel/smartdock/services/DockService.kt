@@ -34,6 +34,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.UserManager
 import java.io.File
+import kotlin.math.abs
 import android.hardware.display.DisplayManager
 import android.hardware.usb.UsbManager
 import android.media.AudioManager
@@ -979,11 +980,16 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         // Remember which half the new window went to
         if (launchMode.startsWith("tiled-") && packageName != null) {
             val placedMode = launchMode
-            dockHandler.postDelayed({
-                tasks.firstOrNull { it.packageName == packageName }?.let {
-                    lastSnap[it.id] = placedMode
-                }
-            }, 1400)
+            // Android doesn't always honour launch bounds, so once the window
+            // exists, put it exactly in its half (again later for slow apps)
+            for (delay in listOf(900L, 2200L))
+                dockHandler.postDelayed({
+                    updateRunningTasks(true)
+                    tasks.firstOrNull { it.packageName == packageName }?.let {
+                        lastSnap[it.id] = placedMode
+                        resizeTaskTo(it.id, placedMode)
+                    }
+                }, delay)
         }
 
         if (quickSettingsPanelVisible)
@@ -2288,9 +2294,35 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         dockLayout.background.alpha = alpha
     }
 
+    private var barDownX = 0f
+    private var barDownY = 0f
+    private var barSwipedDown = false
+
     override fun onTouch(view: View, motionEvent: MotionEvent): Boolean {
+        // Swipe down on the bar: act after a short drag, since the dock sits at the
+        // bottom edge and there's little room to fling
+        when (motionEvent.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                barDownX = motionEvent.rawX
+                barDownY = motionEvent.rawY
+                barSwipedDown = false
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                val dx = motionEvent.rawX - barDownX
+                val dy = motionEvent.rawY - barDownY
+                if (!barSwipedDown && dy > Utils.dpToPx(context, 6) && dy > abs(dx)) {
+                    barSwipedDown = true
+                    onBarSwipeDown()
+                }
+            }
+        }
         gestureDetector.onTouchEvent(motionEvent)
         return false
+    }
+
+    private fun onBarSwipeDown() {
+        if (appMenuVisible) hideAppMenu() else if (!swapSides()) unpinDock()
     }
 
     override fun onDestroy() {
@@ -2381,7 +2413,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         gestureDetector = GestureDetector(context, object : OnSwipeListener() {
             override fun onSwipe(direction: Direction): Boolean {
                 if (direction == Direction.DOWN) {
-                    if (appMenuVisible) hideAppMenu() else if (!swapSides()) unpinDock()
+                    if (!barSwipedDown) onBarSwipeDown()
                 } else if (direction == Direction.LEFT) {
                     if (tasks.isNotEmpty())
                         snapTask(tasks[0], "tiled-left")
