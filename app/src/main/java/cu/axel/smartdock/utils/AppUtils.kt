@@ -413,6 +413,11 @@ object AppUtils {
                 bottom = usableHeight + statusBarHeight
             }
         }
+        // Keep title bars clear of the status bar
+        if (top < statusBarHeight && mode in listOf(
+                "maximized", "tiled-left", "tiled-right", "tiled-center", "tiled-top"
+            )
+        ) top = statusBarHeight
         // Make windows meet the dock exactly, using where the dock really is
         val dockTop = dockTopOnScreen
         if (dockTop != null && displayId == Display.DEFAULT_DISPLAY && dockTop > top) {
