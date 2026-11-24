@@ -23,7 +23,8 @@ class AppChooserMultiplePreference(private val context: Context, attrs: Attribut
     override fun onClick() {
 
         val apps =
-            if (key.startsWith("ignored_notifications")) AppUtils.getInstalledPackages(context) else AppUtils.getInstalledApps(
+            if (key.startsWith("ignored_notifications") || key == "fork_hidden_apps")
+                AppUtils.getInstalledPackages(context) else AppUtils.getInstalledApps(
                 context
             )
         val savedApps = sharedPreferences!!.getStringSet(key, emptySet())!!

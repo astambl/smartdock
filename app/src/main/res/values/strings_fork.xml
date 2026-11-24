@@ -16,4 +16,7 @@
     <string name="fork_empty_half_summary">With a half-screen launch mode, new apps open in the half the current window isn\'t using</string>
     <string name="fork_hide_paired_title">Hide apps that are in a pair</string>
     <string name="fork_hide_paired_summary">Paired apps are shown only through their pair icon, including their open windows</string>
+    <string name="fork_hide_from_dock">Hide from dock</string>
+    <string name="fork_hidden_apps_title">Hidden apps</string>
+    <string name="fork_hidden_apps_summary">Apps that never appear on the dock, even while open. Gestures ignore them too</string>
 </resources>

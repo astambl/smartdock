@@ -453,6 +453,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             actions.add(Action(R.drawable.ic_close, getString(R.string.close)))
         }
         actions.add(Action(R.drawable.ic_snap_left, getString(R.string.pair_with)))
+        actions.add(Action(R.drawable.ic_unpin, getString(R.string.fork_hide_from_dock)))
         return actions
     }
 
@@ -1236,6 +1237,11 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 if (pairChoice != null && action.text.isNotBlank()) {
                     savePair(app, pairChoice)
                     windowManager.removeView(view)
+                } else if (action.text == getString(R.string.fork_hide_from_dock)) {
+                    val hidden = sharedPreferences.getStringSet("fork_hidden_apps", emptySet())!!.toMutableSet()
+                    hidden.add(app.packageName)
+                    sharedPreferences.edit().putStringSet("fork_hidden_apps", hidden).apply()
+                    windowManager.removeView(view)
                 } else if (action.text == getString(R.string.unpair) && app.pair != null) {
                     removePair(app.packageName)
                     windowManager.removeView(view)
@@ -1802,9 +1808,11 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
         val apps = ArrayList<DockApp>()
         val hidePaired = sharedPreferences.getBoolean("fork_hide_paired", true)
+        val hiddenApps = sharedPreferences.getStringSet("fork_hidden_apps", emptySet())!!
         for (entry in dockEntries) {
             val pinnedApp = entry.app
             val pair = entry.pair
+            if (pinnedApp != null && pinnedApp.packageName in hiddenApps) continue
             if (pair != null)
                 apps.add(
                     DockApp("${pair[0].name} + ${pair[1].name}", entry.key, entry.icon!!)
@@ -1840,6 +1848,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     nApps,
                     launcherApps
                 )
+            tasks = ArrayList(tasks.filter { it.packageName !in hiddenApps })
             for (j in 1..tasks.size) {
                 val task = tasks[tasks.size - j]
                 val pairApp = pairFor(task)
@@ -1855,6 +1864,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             }
         } else {
             tasks = AppUtils.getRecentTasks(context, nApps)
+            tasks = ArrayList(tasks.filter { it.packageName !in hiddenApps })
             tasks.reversed().forEach { task ->
                 val index = AppUtils.containsTask(apps, task)
                 if (index == -1 && pairFor(task) == null)

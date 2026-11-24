@@ -32,5 +32,9 @@
             android:title="@string/fork_hide_paired_title"
             android:summary="@string/fork_hide_paired_summary"
             android:defaultValue="true" />
+        <cu.axel.smartdock.preferences.AppChooserMultiplePreference
+            android:key="fork_hidden_apps"
+            android:title="@string/fork_hidden_apps_title"
+            android:summary="@string/fork_hidden_apps_summary" />
     </PreferenceCategory>
 </PreferenceScreen>

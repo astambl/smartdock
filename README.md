@@ -14,6 +14,8 @@
 > - **Snapping full-screen apps:** swiping or keyboard snapping also works on full-screen apps, which become floating windows.
 > - **Fixed signing key:** debug builds are signed with a key committed to this repo (`app/debug.keystore`), so new builds install over old ones.
 >
+> - **Hide apps from the dock:** long-press a dock icon → *Hide from dock*, or manage the list in *Settings → Multitasking → Hidden apps*. Useful for background apps such as the Titan 2's subdisplay launcher.
+>
 > All of these can be turned on or off in **Settings → Multitasking**.
 >
 > Builds: run **Actions → Build debug apk** and download the `apk-debug` artifact.
