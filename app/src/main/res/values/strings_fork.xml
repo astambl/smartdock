@@ -35,4 +35,7 @@
         <item>hide</item>
         <item>top</item>
     </string-array>
+    <string name="fork_troubleshooting">Troubleshooting</string>
+    <string name="fork_debug_keyboard_title">Show keyboard diagnostics</string>
+    <string name="fork_debug_keyboard_summary">Shows what SmartDock detects about the keyboard at the top of the screen</string>
 </resources>

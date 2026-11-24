@@ -702,26 +702,77 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
     /** Height of the on-screen keyboard, or 0 when none is showing */
     private fun keyboardHeight(): Int {
-        val ime = try {
-            windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+        val imeWindows = try {
+            windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
         } catch (_: Exception) {
-            null
-        } ?: return 0
-        val bounds = Rect()
-        if (Build.VERSION.SDK_INT >= 33) {
-            // Touchable area is the visible keyboard, not transparent space around it.
-            // Keyboards like Plektra keep their window open with nothing showing:
-            // an empty area means no keyboard is visible.
-            val region = android.graphics.Region()
-            ime.getRegionInScreen(region)
-            if (region.isEmpty) return 0
-            bounds.set(region.bounds)
-        } else
-            ime.getBoundsInScreen(bounds)
+            emptyList()
+        }
         val screenHeight = windowManager.currentWindowMetrics.bounds.height()
-        val height = screenHeight - bounds.top
-        // Ignore nonsense values (e.g. a full-screen keyboard window)
-        return if (bounds.isEmpty || height <= 0 || height > screenHeight * 0.75) 0 else height
+        val debug = StringBuilder("screen h=$screenHeight  ime windows=${imeWindows.size}\n")
+        var result = 0
+        for (ime in imeWindows) {
+            val windowBounds = Rect()
+            ime.getBoundsInScreen(windowBounds)
+            val regionBounds = Rect()
+            if (Build.VERSION.SDK_INT >= 33) {
+                val region = android.graphics.Region()
+                ime.getRegionInScreen(region)
+                regionBounds.set(region.bounds)
+            }
+            debug.append("window=${windowBounds.toShortString()} region=${regionBounds.toShortString()}\n")
+            // Prefer the touchable area (the visible keyboard), else the window
+            val bounds = if (!regionBounds.isEmpty) regionBounds else windowBounds
+            val height = screenHeight - bounds.top
+            if (!bounds.isEmpty && height > 0 && height <= screenHeight * 0.75)
+                result = maxOf(result, height)
+        }
+        debug.append("keyboard h=$result  lift=$keyboardLift  hidden=$hiddenForKeyboard  " +
+                "mode=${sharedPreferences.getString("fork_keyboard_mode", "above")}  " +
+                "dock h=${dock?.height}  dockTop=${AppUtils.dockTopOnScreen}")
+        showKeyboardDebug(debug.toString())
+        return result
+    }
+
+    private var keyboardDebugView: TextView? = null
+
+    /** Temporary on-screen diagnostics for keyboard detection */
+    private fun showKeyboardDebug(text: String) {
+        val enabled = sharedPreferences.getBoolean("fork_debug_keyboard", false)
+        val existing = keyboardDebugView
+        if (!enabled) {
+            if (existing != null) {
+                try {
+                    windowManager.removeView(existing)
+                } catch (_: Exception) {
+                }
+                keyboardDebugView = null
+            }
+            return
+        }
+        if (existing != null) {
+            existing.text = text
+            return
+        }
+        val view = TextView(context).apply {
+            this.text = text
+            textSize = 11f
+            setTextColor(android.graphics.Color.WHITE)
+            setBackgroundColor(0xCC000000.toInt())
+            setPadding(16, 8, 16, 8)
+        }
+        val params = Utils.makeWindowParams(
+            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, context,
+            accessibilityWindow = true
+        )
+        params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+        params.y = Utils.dpToPx(context, 60)
+        params.flags = params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        try {
+            windowManager.addView(view, params)
+            keyboardDebugView = view
+        } catch (_: Exception) {
+        }
     }
 
     /** Keeps the dock clear of the on-screen keyboard: move it above, hide it, or leave it */
@@ -758,7 +809,8 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             } catch (_: Exception) {
                 false
             }
-            keyboardPollRunning = imeWindowOpen || keyboardLift != 0 || hiddenForKeyboard
+            keyboardPollRunning = imeWindowOpen || keyboardLift != 0 || hiddenForKeyboard ||
+                    sharedPreferences.getBoolean("fork_debug_keyboard", false)
             if (keyboardPollRunning) dockHandler.postDelayed(this, 500)
         }
     }
@@ -1733,6 +1785,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         if (preference == null)
             return
         if (preference.startsWith("fork_")) {
+            if (preference == "fork_debug_keyboard") checkKeyboard()
             loadPinnedApps()
             updateRunningTasks(true)
         } else if (preference.startsWith("theme"))
