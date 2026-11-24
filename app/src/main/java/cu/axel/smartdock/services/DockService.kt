@@ -753,9 +753,15 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         val typing = isTypingInTextField()
         // Keyboards like Plektra (bar-only, for physical keyboards) don't appear in the
         // window list. When typing with no keyboard reported, assume such a bar is showing.
+        if (result > 0) lastKeyboardHeight = result
         if (result == 0 && typing) {
             val liftDp = sharedPreferences.getInt("fork_typing_lift", 0)
-            result = if (liftDp > 0) Utils.dpToPx(context, liftDp) else (dock?.height ?: 0)
+            result = when {
+                liftDp > 0 -> Utils.dpToPx(context, liftDp)
+                // Same height as last time a keyboard was measured: avoids a second resize
+                lastKeyboardHeight > 0 -> lastKeyboardHeight
+                else -> dock?.height ?: 0
+            }
         }
         debug.append("typing in text field=$typing\n")
         debug.append("keyboard h=$result  lift=$keyboardLift  hidden=$hiddenForKeyboard  " +
@@ -764,6 +770,8 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         showKeyboardDebug(debug.toString())
         return result
     }
+
+    private var lastKeyboardHeight = 0
 
     private fun isTypingInTextField() = try {
         findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
@@ -855,7 +863,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         dockHandler.removeCallbacks(windowFit)
         // Shrink quickly once the keyboard settles; grow back a little later in case
         // the keyboard is only briefly hidden (e.g. while switching fields)
-        dockHandler.postDelayed(windowFit, if (keyboardLift > AppUtils.dockLift) 300 else 900)
+        dockHandler.postDelayed(windowFit, if (keyboardLift > AppUtils.dockLift) 30 else 350)
     }
 
     private var keyboardPollRunning = false
@@ -868,7 +876,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             keyboardPollRunning = imeWindowOpen || keyboardLift != 0 || hiddenForKeyboard ||
                     isTypingInTextField() ||
                     sharedPreferences.getBoolean("fork_debug_keyboard", false)
-            if (keyboardPollRunning) dockHandler.postDelayed(this, 500)
+            if (keyboardPollRunning) dockHandler.postDelayed(this, 250)
         }
     }
 
