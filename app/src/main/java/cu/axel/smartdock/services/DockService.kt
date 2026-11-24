@@ -709,12 +709,15 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         } ?: return 0
         val bounds = Rect()
         if (Build.VERSION.SDK_INT >= 33) {
-            // Touchable area is the keyboard itself, not any transparent space above it
+            // Touchable area is the visible keyboard, not transparent space around it.
+            // Keyboards like Plektra keep their window open with nothing showing:
+            // an empty area means no keyboard is visible.
             val region = android.graphics.Region()
             ime.getRegionInScreen(region)
+            if (region.isEmpty) return 0
             bounds.set(region.bounds)
-        }
-        if (bounds.isEmpty) ime.getBoundsInScreen(bounds)
+        } else
+            ime.getBoundsInScreen(bounds)
         val screenHeight = windowManager.currentWindowMetrics.bounds.height()
         val height = screenHeight - bounds.top
         // Ignore nonsense values (e.g. a full-screen keyboard window)
@@ -744,9 +747,38 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         }
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED)
+    private var keyboardPollRunning = false
+
+    /** Keyboards can show or hide without any window event, so check while one is open */
+    private val keyboardPoll: Runnable = object : Runnable {
+        override fun run() {
             updateDockForKeyboard()
+            val imeWindowOpen = try {
+                windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            } catch (_: Exception) {
+                false
+            }
+            keyboardPollRunning = imeWindowOpen || keyboardLift != 0 || hiddenForKeyboard
+            if (keyboardPollRunning) dockHandler.postDelayed(this, 500)
+        }
+    }
+
+    private fun checkKeyboard() {
+        if (!keyboardPollRunning) {
+            keyboardPollRunning = true
+            dockHandler.post(keyboardPoll)
+        } else
+            updateDockForKeyboard()
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED
+        )
+            checkKeyboard()
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED)
+            return
 
         if (!isPinned)
             return
