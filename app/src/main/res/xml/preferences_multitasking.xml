@@ -45,6 +45,11 @@
             android:entryValues="@array/fork_keyboard_mode_values"
             android:defaultValue="above"
             app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            android:key="fork_shrink_while_typing"
+            android:title="@string/fork_shrink_while_typing_title"
+            android:summary="@string/fork_shrink_while_typing_summary"
+            android:defaultValue="true" />
         <SeekBarPreference
             android:key="fork_typing_lift"
             android:title="@string/fork_typing_lift_title"

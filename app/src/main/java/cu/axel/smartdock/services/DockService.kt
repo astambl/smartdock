@@ -834,6 +834,28 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             windowManager.updateViewLayout(dockView, dockLayoutParams)
         } catch (_: Exception) {
         }
+        scheduleWindowFit()
+    }
+
+    /**
+     * Shrinks snapped windows to sit above the lifted dock while typing, and restores
+     * them afterwards. Waits for the keyboard to settle so windows don't jump around.
+     */
+    private val windowFit = Runnable {
+        val shrink = sharedPreferences.getBoolean("fork_shrink_while_typing", true)
+        val target = if (shrink) keyboardLift else 0
+        if (target == AppUtils.dockLift) return@Runnable
+        AppUtils.dockLift = target
+        tasks.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }.forEach { task ->
+            lastSnap[task.id]?.let { resizeTaskTo(task.id, it) }
+        }
+    }
+
+    private fun scheduleWindowFit() {
+        dockHandler.removeCallbacks(windowFit)
+        // Shrink quickly once the keyboard settles; grow back a little later in case
+        // the keyboard is only briefly hidden (e.g. while switching fields)
+        dockHandler.postDelayed(windowFit, if (keyboardLift > AppUtils.dockLift) 300 else 900)
     }
 
     private var keyboardPollRunning = false

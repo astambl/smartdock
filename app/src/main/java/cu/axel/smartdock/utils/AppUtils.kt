@@ -345,6 +345,10 @@ object AppUtils {
     @Volatile
     var dockTopOnScreen: Int? = null
 
+    /** How far the dock is currently lifted above a keyboard (windows shrink by this much) */
+    @Volatile
+    var dockLift: Int = 0
+
     fun makeLaunchBounds(
         context: Context, mode: String, dockHeight: Int, displayId: Int = Display.DEFAULT_DISPLAY
     ): Rect {
@@ -419,7 +423,7 @@ object AppUtils {
             )
         ) top = statusBarHeight
         // Make windows meet the dock exactly, using where the dock really is
-        val dockTop = dockTopOnScreen
+        val dockTop = dockTopOnScreen?.minus(dockLift)
         if (dockTop != null && displayId == Display.DEFAULT_DISPLAY && dockTop > top) {
             if (mode in listOf("maximized", "tiled-left", "tiled-right", "tiled-center", "tiled-bottom"))
                 bottom = dockTop
