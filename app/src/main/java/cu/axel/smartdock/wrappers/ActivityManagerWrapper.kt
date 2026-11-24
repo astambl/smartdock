@@ -3,6 +3,7 @@ package cu.axel.smartdock.wrappers
 import android.app.ActivityManager
 import android.app.IActivityManager
 import android.graphics.Rect
+import android.os.Bundle
 import android.os.IBinder
 import rikka.shizuku.ShizukuBinderWrapper
 import rikka.shizuku.SystemServiceHelper
@@ -42,6 +43,15 @@ class ActivityManagerWrapper {
 
     fun resizeTask(taskId: Int, bounds: Rect) {
         activityManager?.resizeTask(taskId, bounds, 0)
+    }
+
+    fun startActivityFromRecents(taskId: Int, options: Bundle): Boolean {
+        return try {
+            activityManager?.startActivityFromRecents(taskId, options)
+            activityManager != null
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun removeTask(taskId: Int): Boolean {

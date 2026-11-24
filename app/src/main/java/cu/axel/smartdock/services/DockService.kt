@@ -507,12 +507,9 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         val task = app.tasks.firstOrNull()
         if (task == null || task.id == -1) {
             // Not running yet: open it straight into that position
-            launchApp(mode, app.packageName, rememberMode = false)
+            launchApp(mode, app.packageName, app = app, rememberMode = false)
         } else if (mode == "fullscreen") {
-            if (task.windowingMode != WINDOWING_MODE_FULLSCREEN)
-                launchApp("fullscreen", app.packageName, rememberMode = false)
-            else
-                activityManager.moveTaskToFront(task.id, 0)
+            fullscreenTask(task)
         } else {
             snapTask(task, mode)
             if (task.windowingMode == WINDOWING_MODE_FREEFORM)
@@ -1227,8 +1224,24 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         }
         // Full-screen windows can't be resized: reopen the app as a floating
         // window at the snapped position, then resize to be sure it took
-        launchApp(mode, task.packageName, rememberMode = false)
+        reopenTask(task, mode)
         dockHandler.postDelayed({ resizeTaskTo(task.id, mode) }, 400)
+    }
+
+    private fun fullscreenTask(task: AppTask) {
+        if (task.windowingMode == WINDOWING_MODE_FULLSCREEN)
+            activityManager.moveTaskToFront(task.id, 0)
+        else
+            reopenTask(task, "fullscreen")
+    }
+
+    /** Reopens an existing window in a new mode, in whichever profile it runs. */
+    private fun reopenTask(task: AppTask, mode: String) {
+        val options = AppUtils.makeActivityOptions(context, mode, dockHeight, Display.DEFAULT_DISPLAY)
+        val reopened = activityManagerWrapper != null && DeviceUtils.hasShizukuPermission() &&
+                activityManagerWrapper!!.startActivityFromRecents(task.id, options.toBundle())
+        if (!reopened)
+            launchApp(mode, task.packageName, app = task, rememberMode = false)
     }
 
     private fun resizeTaskTo(taskId: Int, mode: String) {
@@ -1527,7 +1540,12 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         val apps = ArrayList<DockApp>()
         if (::pinnedApps.isInitialized)
             pinnedApps.forEach { pinnedApp ->
-                apps.add(DockApp(pinnedApp.name, pinnedApp.packageName, pinnedApp.icon))
+                apps.add(
+                    DockApp(
+                        pinnedApp.name, pinnedApp.packageName, pinnedApp.icon,
+                        pinnedApp.componentName, pinnedApp.userHandle
+                    )
+                )
             }
 
         val gridSize = Utils.dpToPx(context, 52)
@@ -1538,13 +1556,14 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             if (orientation == Configuration.ORIENTATION_PORTRAIT) maxApps else maxAppsLandscape
         if (systemApp || DeviceUtils.hasShizukuPermission()) {
             if (systemApp)
-                tasks = AppUtils.getRunningTasks(activityManager, null, packageManager, nApps)
+                tasks = AppUtils.getRunningTasks(activityManager, null, packageManager, nApps, launcherApps)
             else if (DeviceUtils.hasShizukuPermission())
                 tasks = AppUtils.getRunningTasks(
                     activityManager,
                     activityManagerWrapper,
                     packageManager,
-                    nApps
+                    nApps,
+                    launcherApps
                 )
             for (j in 1..tasks.size) {
                 val task = tasks[tasks.size - j]
@@ -2195,7 +2214,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                         snapTask(tasks[0], "tiled-right")
                 } else if (direction == Direction.UP) {
                     if (tasks.isNotEmpty() && tasks[0].windowingMode != WINDOWING_MODE_FULLSCREEN)
-                        launchApp("fullscreen", tasks[0].packageName, rememberMode = false)
+                        fullscreenTask(tasks[0])
                 }
                 return true
             }

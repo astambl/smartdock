@@ -12,6 +12,7 @@ import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
+import android.os.Process
 import android.os.SystemClock
 import android.os.UserManager
 import android.view.Display
@@ -174,7 +175,8 @@ object AppUtils {
         activityManager: ActivityManager,
         iActivityManager: ActivityManagerWrapper? = null,
         packageManager: PackageManager,
-        max: Int
+        max: Int,
+        launcherApps: LauncherApps? = null
     ): ArrayList<AppTask> {
         val tasksInfo =
             iActivityManager?.getRunningTasks(max) ?: activityManager.getRunningTasks(max)
@@ -200,20 +202,77 @@ object AppUtils {
                 if (!taskInfo.isRunning)
                     continue
 
-                appTasks.add(
-                    AppTask(
-                        taskInfo.id,
-                        packageManager.getActivityInfo(taskInfo.topActivity!!, 0)
-                            .loadLabel(packageManager).toString(),
-                        taskInfo.topActivity!!.packageName,
-                        packageManager.getActivityIcon(taskInfo.topActivity!!),
-                        getWindowingModeMethod.invoke(taskInfo) as Int
+                val windowingMode = getWindowingModeMethod.invoke(taskInfo) as Int
+                val profileApp = findProfileActivity(taskInfo, launcherApps)
+                    ?: if (isInstalled(packageManager, taskInfo)) null
+                    else findInOtherProfiles(taskInfo, launcherApps)
+                if (profileApp != null)
+                    // App running in another profile (e.g. work profile)
+                    appTasks.add(
+                        AppTask(
+                            taskInfo.id,
+                            profileApp.label.toString(),
+                            taskInfo.topActivity!!.packageName,
+                            profileApp.getBadgedIcon(0),
+                            windowingMode,
+                            profileApp.componentName,
+                            profileApp.user
+                        )
                     )
-                )
+                else
+                    appTasks.add(
+                        AppTask(
+                            taskInfo.id,
+                            packageManager.getActivityInfo(taskInfo.topActivity!!, 0)
+                                .loadLabel(packageManager).toString(),
+                            taskInfo.topActivity!!.packageName,
+                            packageManager.getActivityIcon(taskInfo.topActivity!!),
+                            windowingMode
+                        )
+                    )
             } catch (_: PackageManager.NameNotFoundException) {
+            } catch (_: ReflectiveOperationException) {
             }
         }
         return appTasks
+    }
+
+    /** Returns the launcher entry if the task belongs to a profile other than ours. */
+    private fun findProfileActivity(
+        taskInfo: ActivityManager.RunningTaskInfo,
+        launcherApps: LauncherApps?
+    ): LauncherActivityInfo? {
+        if (launcherApps == null) return null
+        val userId = try {
+            taskInfo.javaClass.getField("userId").getInt(taskInfo)
+        } catch (_: ReflectiveOperationException) {
+            return null
+        }
+        // UserHandle.hashCode() is the user id
+        if (userId == Process.myUserHandle().hashCode()) return null
+        val profile = launcherApps.profiles.firstOrNull { it.hashCode() == userId } ?: return null
+        val packageName = taskInfo.topActivity?.packageName ?: return null
+        return launcherApps.getActivityList(packageName, profile).firstOrNull()
+    }
+
+    private fun isInstalled(packageManager: PackageManager, taskInfo: ActivityManager.RunningTaskInfo) =
+        try {
+            packageManager.getActivityInfo(taskInfo.topActivity!!, 0)
+            true
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
+
+    /** Fallback when the task's user can't be read: app only exists in another profile. */
+    private fun findInOtherProfiles(
+        taskInfo: ActivityManager.RunningTaskInfo,
+        launcherApps: LauncherApps?
+    ): LauncherActivityInfo? {
+        if (launcherApps == null) return null
+        val packageName = taskInfo.topActivity?.packageName ?: return null
+        return launcherApps.profiles
+            .filter { it != Process.myUserHandle() }
+            .firstNotNullOfOrNull { launcherApps.getActivityList(packageName, it).firstOrNull() }
     }
 
     fun getRecentTasks(context: Context, max: Int): ArrayList<AppTask> {
