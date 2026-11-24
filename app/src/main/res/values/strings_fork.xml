@@ -19,4 +19,6 @@
     <string name="fork_hide_from_dock">Hide from dock</string>
     <string name="fork_hidden_apps_title">Hidden apps</string>
     <string name="fork_hidden_apps_summary">Apps that never appear on the dock, even while open. Gestures ignore them too</string>
+    <string name="fork_haptics_title">Vibrate on gestures</string>
+    <string name="fork_haptics_summary">A short vibration confirms when a swipe or double tap is recognised</string>
 </resources>

@@ -14,6 +14,8 @@
 > - **Snapping full-screen apps:** swiping or keyboard snapping also works on full-screen apps, which become floating windows.
 > - **Fixed signing key:** debug builds are signed with a key committed to this repo (`app/debug.keystore`), so new builds install over old ones.
 >
+> - **Vibration on gestures:** a short buzz confirms each swipe or double tap.
+> - **Window sides survive restarts:** SmartDock remembers which half each window is in, even after it restarts.
 > - **Hide apps from the dock:** long-press a dock icon → *Hide from dock*, or manage the list in *Settings → Multitasking → Hidden apps*. Useful for background apps such as the Titan 2's subdisplay launcher.
 >
 > All of these can be turned on or off in **Settings → Multitasking**.

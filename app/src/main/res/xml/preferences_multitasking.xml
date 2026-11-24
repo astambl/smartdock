@@ -16,6 +16,11 @@
             android:summary="@string/fork_icon_swipe_close_summary"
             android:defaultValue="true" />
         <SwitchPreferenceCompat
+            android:key="fork_haptics"
+            android:title="@string/fork_haptics_title"
+            android:summary="@string/fork_haptics_summary"
+            android:defaultValue="true" />
+        <SwitchPreferenceCompat
             android:key="fork_double_tap_swap"
             android:title="@string/fork_double_tap_swap_title"
             android:summary="@string/fork_double_tap_swap_summary"

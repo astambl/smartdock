@@ -159,7 +159,55 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     private var bluetoothManagerWrapper: BluetoothManagerWrapper? = null
     private var activityManagerWrapper: ActivityManagerWrapper? = null
     // Last half each window was snapped to, so full screen can toggle back
-    private val lastSnap = HashMap<Int, String>()
+    private val lastSnap = object : LinkedHashMap<Int, String>() {
+        override fun put(key: Int, value: String): String? {
+            super.remove(key) // re-insert so newest entries come last
+            val previous = super.put(key, value)
+            saveSnaps()
+            return previous
+        }
+
+        override fun remove(key: Int): String? {
+            val previous = super.remove(key)
+            saveSnaps()
+            return previous
+        }
+
+        // Forget the oldest windows so the file stays small
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, String>?) = size > 60
+    }
+    private var snapsLoaded = false
+
+    private val snapsFile get() = File(context.filesDir, "snap_positions")
+
+    /** Restores which half each window was in, so it survives SmartDock restarts */
+    private fun loadSnaps() {
+        if (snapsLoaded) return
+        snapsLoaded = true
+        if (!snapsFile.exists()) return
+        for (line in snapsFile.readLines()) {
+            val parts = line.trim().split(" ")
+            val id = parts.getOrNull(0)?.toIntOrNull() ?: continue
+            val mode = parts.getOrNull(1) ?: continue
+            if (mode.startsWith("tiled-")) lastSnap[id] = mode
+        }
+    }
+
+    private fun saveSnaps() {
+        if (!snapsLoaded) return
+        try {
+            snapsFile.writeText(lastSnap.entries.joinToString("") { "${it.key} ${it.value}\n" })
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun haptic() {
+        if (sharedPreferences.getBoolean("fork_haptics", true))
+            dock?.performHapticFeedback(
+                HapticFeedbackConstants.VIRTUAL_KEY,
+                HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+            )
+    }
     private var orientationValue: String = ""
     private var orientation = -1
     private lateinit var sharedPreferences: SharedPreferences
@@ -492,6 +540,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 dockHandler.removeCallbacks(pending)
                 pendingPairTap = null
                 swapPair(pair)
+                haptic()
             } else {
                 pending?.let { dockHandler.removeCallbacks(it) }
                 val open = Runnable {
@@ -554,6 +603,12 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     override fun onDockAppSwiped(app: DockApp, direction: OnSwipeListener.Direction): Boolean {
+        val handled = handleDockAppSwipe(app, direction)
+        if (handled) haptic()
+        return handled
+    }
+
+    private fun handleDockAppSwipe(app: DockApp, direction: OnSwipeListener.Direction): Boolean {
         val pair = app.pair
         if (pair != null) {
             if (direction != OnSwipeListener.Direction.DOWN ||
@@ -1688,6 +1743,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     private fun loadPinnedApps() {
+        loadSnaps()
         migrateOldPairs()
         pinnedApps = AppUtils.getPinnedApps(context, AppUtils.DOCK_PINNED_LIST)
         loadDockEntries()
@@ -2495,23 +2551,28 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 if (direction == Direction.DOWN) {
                     if (appMenuVisible) hideAppMenu() else unpinDock()
                 } else if (direction == Direction.LEFT) {
-                    if (tasks.isNotEmpty() && barSwipes())
+                    if (tasks.isNotEmpty() && barSwipes()) {
                         snapTask(tasks[0], "tiled-left")
-                    else
+                        haptic()
+                    } else
                         performGlobalAction(GLOBAL_ACTION_BACK)
                 } else if (direction == Direction.RIGHT) {
-                    if (tasks.isNotEmpty() && barSwipes())
+                    if (tasks.isNotEmpty() && barSwipes()) {
                         snapTask(tasks[0], "tiled-right")
+                        haptic()
+                    }
                 } else if (direction == Direction.UP) {
-                    if (tasks.isNotEmpty() && barSwipes())
+                    if (tasks.isNotEmpty() && barSwipes()) {
                         fullscreenTask(tasks[0])
+                        haptic()
+                    }
                 }
                 return true
             }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {
                 if (!sharedPreferences.getBoolean("fork_double_tap_swap", true)) return false
-                swapSides()
+                if (swapSides()) haptic()
                 return true
             }
         })
