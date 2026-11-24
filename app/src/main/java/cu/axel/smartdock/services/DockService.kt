@@ -67,6 +67,7 @@ import android.view.ViewConfiguration
 import android.view.View.OnTouchListener
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.Animation
@@ -713,6 +714,28 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 val list = all.valueAt(i)
                 val imes = list.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
                 debug?.append("display $displayId: ${list.size} windows, ${imes.size} keyboard\n")
+                if (debug != null)
+                    for (w in list) {
+                        val b = Rect()
+                        w.getBoundsInScreen(b)
+                        val r = android.graphics.Region()
+                        if (Build.VERSION.SDK_INT >= 33) w.getRegionInScreen(r)
+                        val typeName = when (w.type) {
+                            AccessibilityWindowInfo.TYPE_APPLICATION -> "app"
+                            AccessibilityWindowInfo.TYPE_INPUT_METHOD -> "ime"
+                            AccessibilityWindowInfo.TYPE_SYSTEM -> "system"
+                            AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY -> "a11y"
+                            AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER -> "divider"
+                            AccessibilityWindowInfo.TYPE_MAGNIFICATION_OVERLAY -> "magnify"
+                            else -> "type${w.type}"
+                        }
+                        val pkg = try {
+                            w.root?.packageName ?: "-"
+                        } catch (_: Exception) {
+                            "?"
+                        }
+                        debug.append(" $typeName '${w.title ?: ""}' $pkg ${b.toShortString()} r=${r.bounds.toShortString()}\n")
+                    }
                 // Keyboards on the main display come first
                 if (displayId == Display.DEFAULT_DISPLAY) result.addAll(0, imes) else result.addAll(imes)
             }
@@ -749,6 +772,12 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             if (!bounds.isEmpty && height > 0 && height <= screenHeight * 0.75)
                 result = maxOf(result, height)
         }
+        val typing = try {
+            findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
+        } catch (_: Exception) {
+            false
+        }
+        debug.append("typing in text field=$typing\n")
         debug.append("keyboard h=$result  lift=$keyboardLift  hidden=$hiddenForKeyboard  " +
                 "mode=${sharedPreferences.getString("fork_keyboard_mode", "above")}  " +
                 "dock h=${dock?.height}  dockTop=${AppUtils.dockTopOnScreen}")
@@ -778,7 +807,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         }
         val view = TextView(context).apply {
             this.text = text
-            textSize = 11f
+            textSize = 9f
             setTextColor(android.graphics.Color.WHITE)
             setBackgroundColor(0xCC000000.toInt())
             setPadding(16, 8, 16, 8)
