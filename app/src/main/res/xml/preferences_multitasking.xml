@@ -37,6 +37,11 @@
             android:title="@string/fork_hide_paired_title"
             android:summary="@string/fork_hide_paired_summary"
             android:defaultValue="true" />
+        <SwitchPreferenceCompat
+            android:key="fork_hide_dock_keyboard"
+            android:title="@string/fork_hide_dock_keyboard_title"
+            android:summary="@string/fork_hide_dock_keyboard_summary"
+            android:defaultValue="true" />
         <cu.axel.smartdock.preferences.AppChooserMultiplePreference
             android:key="fork_hidden_apps"
             android:title="@string/fork_hidden_apps_title"

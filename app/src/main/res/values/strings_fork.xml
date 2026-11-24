@@ -21,4 +21,6 @@
     <string name="fork_hidden_apps_summary">Apps that never appear on the dock, even while open. Gestures ignore them too</string>
     <string name="fork_haptics_title">Vibrate on gestures</string>
     <string name="fork_haptics_summary">A short vibration confirms when a swipe or double tap is recognised</string>
+    <string name="fork_hide_dock_keyboard_title">Hide dock while typing</string>
+    <string name="fork_hide_dock_keyboard_summary">Hide the dock while an on-screen keyboard is showing, so it doesn\'t cover the keys</string>
 </resources>

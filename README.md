@@ -16,6 +16,7 @@
 >
 > - **Vibration on gestures:** a short buzz confirms each swipe or double tap.
 > - **Window sides survive restarts:** SmartDock remembers which half each window is in, even after it restarts.
+> - **Hide dock while typing:** the dock gets out of the way while an on-screen keyboard is showing.
 > - **Hide apps from the dock:** long-press a dock icon → *Hide from dock*, or manage the list in *Settings → Multitasking → Hidden apps*. Useful for background apps such as the Titan 2's subdisplay launcher.
 >
 > All of these can be turned on or off in **Settings → Multitasking**.

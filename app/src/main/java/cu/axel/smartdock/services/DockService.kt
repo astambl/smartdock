@@ -65,6 +65,7 @@ import android.view.ViewConfiguration
 import android.view.View.OnTouchListener
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityWindowInfo
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
@@ -675,7 +676,36 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         }
     }
 
+    private var hiddenForKeyboard = false
+
+    /** Hides the dock while an on-screen keyboard is showing, so it doesn't cover it */
+    private fun updateDockForKeyboard() {
+        val dockView = dock ?: return
+        val keyboardShown = sharedPreferences.getBoolean("fork_hide_dock_keyboard", true) &&
+                try {
+                    windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+                } catch (_: Exception) {
+                    false
+                }
+        if (keyboardShown == hiddenForKeyboard) return
+        hiddenForKeyboard = keyboardShown
+        if (keyboardShown) {
+            dockView.visibility = View.GONE
+            dockLayoutParams.flags = dockLayoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        } else {
+            dockView.visibility = View.VISIBLE
+            dockLayoutParams.flags = dockLayoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        }
+        try {
+            windowManager.updateViewLayout(dockView, dockLayoutParams)
+        } catch (_: Exception) {
+        }
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED)
+            updateDockForKeyboard()
+
         if (!isPinned)
             return
 
