@@ -160,7 +160,7 @@
     <string name="enable_expand_notifications_title">Alt+Q para abrir ajustes rápidos</string>
     <string name="enable_ctrl_back_title">Ctrl derecho actúa botón Atrás</string>
     <string name="enable_f10_title">F10 para alternar pantalla dividida</string>
-    <string name="enable_toggle_pin_title">Alt+W para anclar/desanclar el Dock</string>
+    <string name="enable_toggle_pin_title">Alt+P para anclar/desanclar el Dock</string>
     <string name="enable_menu_recents_title">Menú para mostrar recientes</string>
 
     <!-- Sounds page -->

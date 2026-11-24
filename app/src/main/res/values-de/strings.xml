@@ -156,7 +156,7 @@
     <string name="enable_expand_notifications_title">Alt+Q zum Öffnen der Schnelleinstellungen</string>
     <string name="enable_ctrl_back_title">Rechte Strg-Taste dient als Zurück-Taste</string>
     <string name="enable_f10_title">F10 zum Umschalten des geteilten Bildschirms</string>
-    <string name="enable_toggle_pin_title">Alt+W zum Anheften/Entheften des Docks</string>
+    <string name="enable_toggle_pin_title">Alt+P zum Anheften/Entheften des Docks</string>
     <string name="enable_menu_recents_title">Menütaste zur Anzeige der Favoriten</string>
 
     <!-- Sounds page -->

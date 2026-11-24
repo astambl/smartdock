@@ -156,7 +156,7 @@
     <string name="enable_expand_notifications_title">Alt+Q打开快速设置</string>
     <string name="enable_ctrl_back_title">右Ctrl键作为返回按钮</string>
     <string name="enable_f10_title">F10切换分屏</string>
-    <string name="enable_toggle_pin_title">Alt+W固定/取消固定Dock</string>
+    <string name="enable_toggle_pin_title">Alt+P固定/取消固定Dock</string>
     <string name="enable_menu_recents_title">菜单键显示最近应用</string>
 
     <!-- Sounds page -->

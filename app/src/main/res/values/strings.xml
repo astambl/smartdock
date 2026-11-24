@@ -165,7 +165,7 @@
     <string name="enable_expand_notifications_title">Alt+Q to open quick settings</string>
     <string name="enable_ctrl_back_title">Right Ctrl acts as back button</string>
     <string name="enable_f10_title">F10 to toggle split screen</string>
-    <string name="enable_toggle_pin_title">Alt+W to pin/unpin the dock</string>
+    <string name="enable_toggle_pin_title">Alt+P to pin/unpin the dock</string>
     <string name="enable_menu_recents_title">Menu key to show recents</string>
 
     <!-- Sounds page -->

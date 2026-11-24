@@ -17,6 +17,7 @@
 > - **Vibration on gestures:** a short buzz confirms each swipe or double tap.
 > - **Window sides survive restarts:** SmartDock remembers which half each window is in, even after it restarts.
 > - **Dock and keyboard:** when an on-screen keyboard opens, the dock moves up to sit on top of it, so both stay visible. It can also hide instead (*Settings → Multitasking → When the keyboard opens*).
+> - **Keyboard shortcuts:** Alt+P now pins or unpins the dock, and the Alt+P "open settings" shortcut has been removed. Alt+W no longer does anything, so it's free for the Titan 2's number keys.
 > - **Hide apps from the dock:** long-press a dock icon → *Hide from dock*, or manage the list in *Settings → Multitasking → Hidden apps*. Useful for background apps such as the Titan 2's subdisplay launcher.
 >
 > All of these can be turned on or off in **Settings → Multitasking**.

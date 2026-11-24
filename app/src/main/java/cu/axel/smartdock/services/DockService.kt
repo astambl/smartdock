@@ -788,14 +788,11 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 )
                     lockScreen()
                 else if (event.keyCode == KeyEvent.KEYCODE_P && sharedPreferences.getBoolean(
-                        "enable_open_settings",
+                        "enable_toggle_pin",
                         true
                     )
                 )
-                    launchApp(
-                        null, null,
-                        Intent(Settings.ACTION_SETTINGS)
-                    )
+                    togglePin()
                 else if (event.keyCode == KeyEvent.KEYCODE_T && sharedPreferences.getBoolean(
                         "enable_open_terminal",
                         false
@@ -808,12 +805,6 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     )
                 )
                     performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
-                else if (event.keyCode == KeyEvent.KEYCODE_W && sharedPreferences.getBoolean(
-                        "enable_toggle_pin",
-                        true
-                    )
-                )
-                    togglePin()
                 else if (event.keyCode == KeyEvent.KEYCODE_M && sharedPreferences.getBoolean(
                         "enable_open_music",
                         true

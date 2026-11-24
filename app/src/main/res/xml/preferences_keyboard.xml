@@ -10,10 +10,6 @@
             android:title="@string/enable_lock_desktop_title"
             android:defaultValue="true" />
         <SwitchPreferenceCompat
-            android:key="enable_open_settings"
-            android:title="@string/enable_open_settings_title"
-            android:defaultValue="true" />
-        <SwitchPreferenceCompat
             android:key="enable_toggle_pin"
             android:title="@string/enable_toggle_pin_title"
             android:defaultValue="true" />
