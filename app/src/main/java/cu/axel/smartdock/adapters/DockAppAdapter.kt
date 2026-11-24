@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import kotlin.math.abs
+import kotlin.math.max
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.RecyclerView
 import cu.axel.smartdock.R
@@ -14,6 +16,7 @@ import cu.axel.smartdock.models.DockApp
 import cu.axel.smartdock.utils.AppUtils
 import cu.axel.smartdock.utils.ColorUtils
 import cu.axel.smartdock.utils.IconPackUtils
+import cu.axel.smartdock.utils.OnSwipeListener.Direction
 import cu.axel.smartdock.utils.Utils
 
 class DockAppAdapter(
@@ -28,6 +31,7 @@ class DockAppAdapter(
     interface OnDockAppClickListener {
         fun onDockAppClicked(app: DockApp, view: View)
         fun onDockAppLongClicked(app: DockApp, view: View)
+        fun onDockAppSwiped(app: DockApp, direction: Direction): Boolean = false
     }
 
     init {
@@ -107,10 +111,38 @@ class DockAppAdapter(
                 listener.onDockAppLongClicked(app, view)
                 true
             }
+            val swipeThreshold = Utils.dpToPx(itemView.context, 30)
+            var downX = 0f
+            var downY = 0f
             itemView.setOnTouchListener { view, event ->
                 if (event.buttonState == MotionEvent.BUTTON_SECONDARY) {
                     listener.onDockAppLongClicked(app, view)
                     return@setOnTouchListener true
+                }
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downX = event.rawX
+                        downY = event.rawY
+                        // Keep the icon row from scrolling so swipes reach the icon
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+
+                    MotionEvent.ACTION_UP -> {
+                        val dx = event.rawX - downX
+                        val dy = event.rawY - downY
+                        if (max(abs(dx), abs(dy)) > swipeThreshold) {
+                            val direction = if (abs(dx) > abs(dy)) {
+                                if (dx > 0) Direction.RIGHT else Direction.LEFT
+                            } else {
+                                if (dy < 0) Direction.UP else Direction.DOWN
+                            }
+                            view.cancelLongPress()
+                            view.isPressed = false
+                            listener.onDockAppSwiped(app, direction)
+                            // Swallow the release so a swipe never counts as a tap
+                            return@setOnTouchListener true
+                        }
+                    }
                 }
                 false
             }

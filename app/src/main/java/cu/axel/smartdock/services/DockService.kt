@@ -497,6 +497,31 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         showDockAppContextMenu(app, view)
     }
 
+    override fun onDockAppSwiped(app: DockApp, direction: OnSwipeListener.Direction): Boolean {
+        val mode = when (direction) {
+            OnSwipeListener.Direction.LEFT -> "tiled-left"
+            OnSwipeListener.Direction.RIGHT -> "tiled-right"
+            OnSwipeListener.Direction.UP -> "fullscreen"
+            else -> return false
+        }
+        val task = app.tasks.firstOrNull()
+        if (task == null || task.id == -1) {
+            // Not running yet: open it straight into that position
+            launchApp(mode, app.packageName, rememberMode = false)
+        } else if (mode == "fullscreen") {
+            if (task.windowingMode != WINDOWING_MODE_FULLSCREEN)
+                launchApp("fullscreen", app.packageName, rememberMode = false)
+            else
+                activityManager.moveTaskToFront(task.id, 0)
+        } else {
+            snapTask(task, mode)
+            if (task.windowingMode == WINDOWING_MODE_FREEFORM)
+                activityManager.moveTaskToFront(task.id, 0)
+        }
+        dockHandler.postDelayed({ updateRunningTasks() }, 600)
+        return true
+    }
+
     override fun onAppClicked(app: App, item: View) {
         if (app.packageName == "$packageName.calc") {
             val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
