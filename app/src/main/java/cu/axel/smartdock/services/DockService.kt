@@ -150,6 +150,8 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     private var wifiManagerWrapper: WifiManagerWrapper? = null
     private var bluetoothManagerWrapper: BluetoothManagerWrapper? = null
     private var activityManagerWrapper: ActivityManagerWrapper? = null
+    // Last half each window was snapped to, so full screen can toggle back
+    private val lastSnap = HashMap<Int, String>()
     private var orientationValue: String = ""
     private var orientation = -1
     private lateinit var sharedPreferences: SharedPreferences
@@ -502,9 +504,19 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             OnSwipeListener.Direction.LEFT -> "tiled-left"
             OnSwipeListener.Direction.RIGHT -> "tiled-right"
             OnSwipeListener.Direction.UP -> "fullscreen"
-            else -> return false
+            OnSwipeListener.Direction.DOWN -> "close"
         }
         val task = app.tasks.firstOrNull()
+        if (mode == "close") {
+            // Close the app's most recent window
+            if (task == null || task.id == -1 || activityManagerWrapper == null ||
+                !DeviceUtils.hasShizukuPermission()
+            ) return false
+            activityManagerWrapper?.removeTask(task.id)
+            lastSnap.remove(task.id)
+            dockHandler.postDelayed({ updateRunningTasks() }, 600)
+            return true
+        }
         if (task == null || task.id == -1) {
             // Not running yet: open it straight into that position
             launchApp(mode, app.packageName, app = app, rememberMode = false)
@@ -1218,6 +1230,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     private fun snapTask(task: AppTask, mode: String) {
+        lastSnap[task.id] = mode
         if (task.windowingMode == WINDOWING_MODE_FREEFORM) {
             resizeTaskTo(task.id, mode)
             return
@@ -1228,10 +1241,14 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         dockHandler.postDelayed({ resizeTaskTo(task.id, mode) }, 400)
     }
 
+    /** Toggles a window between full screen and its last half. */
     private fun fullscreenTask(task: AppTask) {
-        if (task.windowingMode == WINDOWING_MODE_FULLSCREEN)
-            activityManager.moveTaskToFront(task.id, 0)
-        else
+        if (task.windowingMode == WINDOWING_MODE_FULLSCREEN) {
+            val defaultMode = sharedPreferences.getString("launch_mode", "")!!
+            val half = lastSnap[task.id]
+                ?: if (defaultMode.startsWith("tiled-")) defaultMode else "tiled-left"
+            snapTask(task, half)
+        } else
             reopenTask(task, "fullscreen")
     }
 
@@ -2213,7 +2230,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     if (tasks.isNotEmpty())
                         snapTask(tasks[0], "tiled-right")
                 } else if (direction == Direction.UP) {
-                    if (tasks.isNotEmpty() && tasks[0].windowingMode != WINDOWING_MODE_FULLSCREEN)
+                    if (tasks.isNotEmpty())
                         fullscreenTask(tasks[0])
                 }
                 return true
