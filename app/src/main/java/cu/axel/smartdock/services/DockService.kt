@@ -684,11 +684,12 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     /** Records where the dock's top edge is, and re-fits snapped windows if it moved */
     private fun updateDockTop() {
         val dockView = dock ?: return
+        // Only measure the dock at rest: never while it's lifted or hidden for a keyboard
+        if (keyboardLift != 0 || hiddenForKeyboard || keyboardHeight() > 0) return
         val newTop = if (isPinned && dockView.visibility == View.VISIBLE && dockView.height > 0) {
             val location = IntArray(2)
             dockView.getLocationOnScreen(location)
-            // Ignore the temporary lift above the keyboard
-            location[1] + keyboardLift
+            location[1]
         } else null
         val oldTop = AppUtils.dockTopOnScreen
         if (newTop == oldTop) return
@@ -2716,7 +2717,10 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
         dockLayoutParams.gravity = Gravity.BOTTOM or Gravity.START
         windowManager.addView(dock, dockLayoutParams)
-        dock!!.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> updateDockTop() }
+        dock!!.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            // Measure once the layout has settled
+            v.post { updateDockTop() }
+        }
 
         //Dock handle
         handleLayoutParams = Utils.makeWindowParams(
