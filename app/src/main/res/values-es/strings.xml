@@ -338,6 +338,8 @@
     <string name="dock_elements_landscape">Elementos del Dock(landscape)</string>
 
     <string name="half_screen_center">Media pantalla (centro)</string>
+    <string name="pair_with">Emparejar con…</string>
+    <string name="unpair">Desemparejar</string>
     <string name="half_screen_left">Media pantalla (izquierda)</string>
     <string name="half_screen_right">Media pantalla (derecha)</string>
 </resources>

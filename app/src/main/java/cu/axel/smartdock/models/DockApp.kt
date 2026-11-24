@@ -7,6 +7,8 @@ import android.os.UserHandle
 
 class DockApp : App {
     val tasks: ArrayList<AppTask>
+    /** Set when this dock entry is an app pair */
+    var pair: List<App>? = null
 
     constructor(
         name: String, packageName: String, icon: Drawable,

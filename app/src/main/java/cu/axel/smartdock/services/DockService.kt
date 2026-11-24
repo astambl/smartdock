@@ -27,7 +27,13 @@ import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.PorterDuff
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.os.UserManager
+import java.io.File
 import android.hardware.display.DisplayManager
 import android.hardware.usb.UsbManager
 import android.media.AudioManager
@@ -200,6 +206,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     private var dock: HoverInterceptorLayout? = null
     private lateinit var bluetoothManager: BluetoothManager
     private lateinit var pinnedApps: ArrayList<App>
+    private var appPairs: List<List<App>> = emptyList()
     private lateinit var dateTv: TextClock
     private var maxApps = 0
     private var maxAppsLandscape = 0
@@ -421,6 +428,10 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
     private fun getDockAppActions(app: DockApp): ArrayList<Action> {
         val actions = ArrayList<Action>()
+        if (app.pair != null) {
+            actions.add(Action(R.drawable.ic_close, getString(R.string.unpair)))
+            return actions
+        }
         if (AppUtils.isPinned(this, app, AppUtils.DOCK_PINNED_LIST)) {
             actions.add(Action(R.drawable.ic_unpin, getString(R.string.unpin)))
             actions.add(Action(R.drawable.ic_arrow_right, getString(R.string.move)))
@@ -434,7 +445,20 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             }
             actions.add(Action(R.drawable.ic_close, getString(R.string.close)))
         }
+        actions.add(Action(R.drawable.ic_snap_left, getString(R.string.pair_with)))
         return actions
+    }
+
+    /** Other apps in the dock that can be paired with this one */
+    private fun pairCandidates(app: DockApp): List<App> {
+        val candidates = ArrayList<App>()
+        val all: List<App> = (if (::pinnedApps.isInitialized) pinnedApps else emptyList<App>()) + tasks
+        for (other in all) {
+            if (other.packageName == app.packageName && other.userHandle == app.userHandle) continue
+            if (candidates.none { it.packageName == other.packageName && it.userHandle == other.userHandle })
+                candidates.add(other)
+        }
+        return candidates
     }
 
     private fun getPinActions(app: App): ArrayList<Action> {
@@ -450,6 +474,10 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     override fun onDockAppClicked(app: DockApp, anchor: View) {
+        app.pair?.let {
+            launchPair(it)
+            return
+        }
         val tasks = app.tasks
         if (tasks.size == 1) {
             val taskId = tasks[0].id
@@ -500,6 +528,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     override fun onDockAppSwiped(app: DockApp, direction: OnSwipeListener.Direction): Boolean {
+        if (app.pair != null) return false
         val mode = when (direction) {
             OnSwipeListener.Direction.LEFT -> "tiled-left"
             OnSwipeListener.Direction.RIGHT -> "tiled-right"
@@ -895,6 +924,21 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
             )
                 db.saveLaunchMode(packageName, launchMode)
 
+        // Duo-style: a new app goes to the half the current window isn't using
+        if (rememberMode && intent == null && launchMode.startsWith("tiled-")) {
+            val top = tasks.firstOrNull {
+                it.windowingMode == WINDOWING_MODE_FREEFORM && it.packageName != packageName
+            }
+            when (top?.let { lastSnap[it.id] }) {
+                "tiled-left" -> launchMode = "tiled-right"
+                "tiled-right" -> launchMode = "tiled-left"
+                "tiled-center" -> {
+                    snapTask(top!!, "tiled-left")
+                    launchMode = "tiled-right"
+                }
+            }
+        }
+
         val options = AppUtils.makeActivityOptions(context, launchMode, dockHeight, displayId)
 
         //Used only for work apps
@@ -932,6 +976,15 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         }
         //Hack to ensure the launched app is already on the top of the stack
         dockHandler.postDelayed({ updateRunningTasks() }, 1200)
+        // Remember which half the new window went to
+        if (launchMode.startsWith("tiled-") && packageName != null) {
+            val placedMode = launchMode
+            dockHandler.postDelayed({
+                tasks.firstOrNull { it.packageName == packageName }?.let {
+                    lastSnap[it.id] = placedMode
+                }
+            }, 1400)
+        }
 
         if (quickSettingsPanelVisible)
             hideQuickSettingsPanel()
@@ -1123,10 +1176,25 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         val actionsLv = view.findViewById<ListView>(R.id.tasks_lv)
         actionsLv.adapter = AppActionsAdapter(context, getDockAppActions(app))
         var inSnapMenu = false
+        var pairMenu: List<App>? = null
         actionsLv.setOnItemClickListener { adapterView, _, position, _ ->
             if (adapterView.getItemAtPosition(position) is Action) {
                 val action = adapterView.getItemAtPosition(position) as Action
-                if (action.text == getString(R.string.pin) || action.text == getString(R.string.unpin)) {
+                val pairChoice = pairMenu?.getOrNull(position - 1)
+                if (pairChoice != null && action.text.isNotBlank()) {
+                    savePair(app, pairChoice)
+                    windowManager.removeView(view)
+                } else if (action.text == getString(R.string.unpair) && app.pair != null) {
+                    removePair(app.packageName.removePrefix("pair:").toInt())
+                    windowManager.removeView(view)
+                } else if (action.text == getString(R.string.pair_with) && pairMenu == null) {
+                    val candidates = pairCandidates(app)
+                    pairMenu = candidates
+                    val actions = ArrayList<Action>()
+                    actions.add(Action(R.drawable.ic_arrow_back, ""))
+                    candidates.forEach { actions.add(Action(R.drawable.ic_snap_right, it.name)) }
+                    actionsLv.adapter = AppActionsAdapter(context, actions)
+                } else if (action.text == getString(R.string.pin) || action.text == getString(R.string.unpin)) {
                     if (AppUtils.isPinned(context, app, AppUtils.DOCK_PINNED_LIST))
                         AppUtils.unpinApp(
                             context,
@@ -1222,6 +1290,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     windowManager.removeView(view)
                 } else if (action.text.isBlank()) {
                     inSnapMenu = false
+                    pairMenu = null
                     actionsLv.adapter = AppActionsAdapter(context, getDockAppActions(app))
                 }
             }
@@ -1239,6 +1308,17 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         // window at the snapped position, then resize to be sure it took
         reopenTask(task, mode)
         dockHandler.postDelayed({ resizeTaskTo(task.id, mode) }, 400)
+    }
+
+    /** Swaps the left and right windows, or moves a lone half window across. */
+    private fun swapSides(): Boolean {
+        val halves = tasks.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }
+        val left = halves.firstOrNull { lastSnap[it.id] == "tiled-left" }
+        val right = halves.firstOrNull { lastSnap[it.id] == "tiled-right" }
+        if (left == null && right == null) return false
+        left?.let { snapTask(it, "tiled-right") }
+        right?.let { snapTask(it, "tiled-left") }
+        return true
     }
 
     /** Toggles a window between full screen and its last half. */
@@ -1546,6 +1626,79 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
     private fun loadPinnedApps() {
         pinnedApps = AppUtils.getPinnedApps(context, AppUtils.DOCK_PINNED_LIST)
+        loadAppPairs()
+    }
+
+    private val pairsFile get() = File(context.filesDir, "app_pairs")
+
+    /** Each line: "pkgA serialA pkgB serialB" */
+    private fun loadAppPairs() {
+        val userManager = getSystemService(USER_SERVICE) as UserManager
+        val pairs = ArrayList<List<App>>()
+        if (pairsFile.exists())
+            for (line in pairsFile.readLines()) {
+                val parts = line.trim().split(" ")
+                if (parts.size != 4) continue
+                val apps = listOf(0, 2).mapNotNull { i ->
+                    val user = userManager.getUserForSerialNumber(parts[i + 1].toLong())
+                        ?: return@mapNotNull null
+                    launcherApps.getActivityList(parts[i], user).firstOrNull()?.let {
+                        App(it.label.toString(), parts[i], it.getBadgedIcon(0), it.componentName, it.user)
+                    }
+                }
+                if (apps.size == 2) pairs.add(apps)
+            }
+        appPairs = pairs
+    }
+
+    private fun savePair(first: App, second: App) {
+        val userManager = getSystemService(USER_SERVICE) as UserManager
+        pairsFile.appendText(
+            "${first.packageName} ${userManager.getSerialNumberForUser(first.userHandle)} " +
+                    "${second.packageName} ${userManager.getSerialNumberForUser(second.userHandle)}\n"
+        )
+        loadAppPairs()
+        updateRunningTasks(true)
+    }
+
+    private fun removePair(index: Int) {
+        if (!pairsFile.exists()) return
+        val lines = pairsFile.readLines().filter { it.isNotBlank() }.toMutableList()
+        if (index in lines.indices) lines.removeAt(index)
+        pairsFile.writeText(lines.joinToString("") { "$it\n" })
+        loadAppPairs()
+        updateRunningTasks(true)
+    }
+
+    /** Two app icons overlapped diagonally */
+    private fun pairIcon(first: Drawable, second: Drawable): Drawable {
+        val size = 192
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val part = (size * 0.66).toInt()
+        for ((drawable, offset) in listOf(first to 0, second to size - part)) {
+            val icon = drawable.constantState?.newDrawable()?.mutate() ?: drawable
+            icon.setBounds(offset, offset, offset + part, offset + part)
+            icon.draw(canvas)
+        }
+        return BitmapDrawable(resources, bitmap)
+    }
+
+    /** Opens both apps of a pair side by side */
+    private fun launchPair(pair: List<App>) {
+        pair.forEachIndexed { i, pairApp ->
+            val mode = if (i == 0) "tiled-left" else "tiled-right"
+            dockHandler.postDelayed({
+                val task = tasks.firstOrNull {
+                    it.packageName == pairApp.packageName && it.userHandle == pairApp.userHandle
+                }
+                if (task != null) {
+                    snapTask(task, mode)
+                    activityManager.moveTaskToFront(task.id, 0)
+                } else
+                    launchApp(mode, pairApp.packageName, app = pairApp, rememberMode = false)
+            }, i * 400L)
+        }
     }
 
     private fun updateRunningTasks(recreateAdapter: Boolean = false) {
@@ -1564,6 +1717,14 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     )
                 )
             }
+        appPairs.forEachIndexed { i, pair ->
+            apps.add(
+                DockApp(
+                    "${pair[0].name} + ${pair[1].name}", "pair:$i",
+                    pairIcon(pair[0].icon, pair[1].icon)
+                ).also { it.pair = pair }
+            )
+        }
 
         val gridSize = Utils.dpToPx(context, 52)
 
@@ -2220,7 +2381,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         gestureDetector = GestureDetector(context, object : OnSwipeListener() {
             override fun onSwipe(direction: Direction): Boolean {
                 if (direction == Direction.DOWN) {
-                    if (appMenuVisible) hideAppMenu() else unpinDock()
+                    if (appMenuVisible) hideAppMenu() else if (!swapSides()) unpinDock()
                 } else if (direction == Direction.LEFT) {
                     if (tasks.isNotEmpty())
                         snapTask(tasks[0], "tiled-left")

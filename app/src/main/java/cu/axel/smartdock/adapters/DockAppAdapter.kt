@@ -75,7 +75,7 @@ class DockAppAdapter(
             viewHolder.runningIndicator.alpha = 0f
             viewHolder.taskCounter.alpha = 0f
         }
-        if (iconPackUtils != null)
+        if (iconPackUtils != null && app.pair == null)
             viewHolder.iconIv.setImageDrawable(iconPackUtils.getAppThemedIcon(app.packageName))
         else
             viewHolder.iconIv.setImageDrawable(app.icon)

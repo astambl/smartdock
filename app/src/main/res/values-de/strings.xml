@@ -340,6 +340,8 @@
     <string name="dock_elements_landscape">Dock elements(landscape)</string>
 
     <string name="half_screen_center">Halber Bildschirm (Mitte)</string>
+    <string name="pair_with">Koppeln mit…</string>
+    <string name="unpair">Entkoppeln</string>
     <string name="half_screen_left">Halber Bildschirm (links)</string>
     <string name="half_screen_right">Halber Bildschirm (rechts)</string>
 </resources>

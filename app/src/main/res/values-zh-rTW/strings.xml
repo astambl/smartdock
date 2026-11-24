@@ -340,6 +340,8 @@
     <string name="dock_elements_landscape">Dock elements(landscape)</string>
 
     <string name="half_screen_center">半屏（置中）</string>
+    <string name="pair_with">配對…</string>
+    <string name="unpair">取消配對</string>
     <string name="half_screen_left">半屏（左）</string>
     <string name="half_screen_right">半屏（右）</string>
 </resources>
