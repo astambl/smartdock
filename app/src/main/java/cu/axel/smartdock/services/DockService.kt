@@ -1640,8 +1640,11 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
      * window just maximised to full screen), and resizing a full-screen window to a half
      * leaves it drawn on one side with an empty gap.
      */
-    private fun freshFreeformTasks(): List<AppTask> {
-        val current = if (activityManagerWrapper != null && DeviceUtils.hasShizukuPermission())
+    private fun freshFreeformTasks(): List<AppTask> =
+        freshTasks().filter { it.windowingMode == WINDOWING_MODE_FREEFORM }
+
+    private fun freshTasks(): List<AppTask> {
+        return if (activityManagerWrapper != null && DeviceUtils.hasShizukuPermission())
             try {
                 AppUtils.getRunningTasks(
                     activityManager, activityManagerWrapper, packageManager, 30, launcherApps
@@ -1650,7 +1653,6 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                 tasks
             }
         else tasks
-        return current.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }
     }
 
     private fun barSwipes() = sharedPreferences.getBoolean("fork_bar_swipes", true)
@@ -1667,7 +1669,9 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
     }
 
     /** Toggles a window between full screen and its last half. */
-    private fun fullscreenTask(task: AppTask) {
+    private fun fullscreenTask(cachedTask: AppTask) {
+        // Use the window's current state, not a possibly out-of-date copy
+        val task = freshTasks().firstOrNull { it.id == cachedTask.id } ?: cachedTask
         if (task.windowingMode == WINDOWING_MODE_FULLSCREEN) {
             val defaultMode = sharedPreferences.getString("launch_mode", "")!!
             val half = lastSnap[task.id]
@@ -1679,6 +1683,28 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
     /** Reopens an existing window in a new mode, in whichever profile it runs. */
     private fun reopenTask(task: AppTask, mode: String) {
+        if (mode == "fullscreen" && task.windowingMode == WINDOWING_MODE_FREEFORM) {
+            // Clear any leftover half-width size first (like Android's maximise button),
+            // otherwise the full-screen window can stay drawn on one half
+            reopenTaskDirect(task, "maximized")
+            resizeTaskTo(task.id, "maximized")
+            dockHandler.postDelayed({ reopenTaskDirect(task, "fullscreen") }, 250)
+            return
+        }
+        if (mode == "fullscreen") {
+            // Already full screen but possibly stuck at half width: float it full size,
+            // then return it to full screen
+            reopenTaskDirect(task, "maximized")
+            dockHandler.postDelayed({
+                resizeTaskTo(task.id, "maximized")
+                reopenTaskDirect(task, "fullscreen")
+            }, 300)
+            return
+        }
+        reopenTaskDirect(task, mode)
+    }
+
+    private fun reopenTaskDirect(task: AppTask, mode: String) {
         val options = AppUtils.makeActivityOptions(context, mode, dockHeight, Display.DEFAULT_DISPLAY)
         val reopened = activityManagerWrapper != null && DeviceUtils.hasShizukuPermission() &&
                 activityManagerWrapper!!.startActivityFromRecents(task.id, options.toBundle())
@@ -1688,6 +1714,10 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
 
     private fun resizeTaskTo(taskId: Int, mode: String) {
         if (taskId < 0) return
+        // Never squeeze a full-screen window into a half: it ends up drawn on one side
+        // with an empty gap. Only floating windows are resized.
+        val current = freshTasks().firstOrNull { it.id == taskId }
+        if (current != null && current.windowingMode != WINDOWING_MODE_FREEFORM) return
         val bounds = AppUtils.makeLaunchBounds(context, mode, dockHeight)
         if (activityManagerWrapper != null && DeviceUtils.hasShizukuPermission())
             activityManagerWrapper?.resizeTask(taskId, bounds)

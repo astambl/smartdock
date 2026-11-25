@@ -42,7 +42,11 @@ class ActivityManagerWrapper {
     }
 
     fun resizeTask(taskId: Int, bounds: Rect) {
-        activityManager?.resizeTask(taskId, bounds, 0)
+        try {
+            activityManager?.resizeTask(taskId, bounds, 0)
+        } catch (_: Exception) {
+            // Android refuses to resize some windows (e.g. full screen)
+        }
     }
 
     fun startActivityFromRecents(taskId: Int, options: Bundle): Boolean {
