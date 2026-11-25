@@ -696,7 +696,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         AppUtils.dockTopOnScreen = newTop
         if (oldTop == null || newTop == null || abs(newTop - oldTop) < 2) return
         // Dock size changed: re-fit windows that are snapped to a half
-        tasks.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }.forEach { task ->
+        freshFreeformTasks().forEach { task ->
             lastSnap[task.id]?.let { resizeTaskTo(task.id, it) }
         }
     }
@@ -854,7 +854,7 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         val target = if (shrink) keyboardLift else 0
         if (target == AppUtils.dockLift) return@Runnable
         AppUtils.dockLift = target
-        tasks.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }.forEach { task ->
+        freshFreeformTasks().forEach { task ->
             lastSnap[task.id]?.let { resizeTaskTo(task.id, it) }
         }
     }
@@ -1635,11 +1635,29 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
         dockHandler.postDelayed({ resizeTaskTo(task.id, mode) }, 400)
     }
 
+    /**
+     * Floating windows as they are right now. The cached list can be out of date (e.g. a
+     * window just maximised to full screen), and resizing a full-screen window to a half
+     * leaves it drawn on one side with an empty gap.
+     */
+    private fun freshFreeformTasks(): List<AppTask> {
+        val current = if (activityManagerWrapper != null && DeviceUtils.hasShizukuPermission())
+            try {
+                AppUtils.getRunningTasks(
+                    activityManager, activityManagerWrapper, packageManager, 30, launcherApps
+                )
+            } catch (_: Exception) {
+                tasks
+            }
+        else tasks
+        return current.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }
+    }
+
     private fun barSwipes() = sharedPreferences.getBoolean("fork_bar_swipes", true)
 
     /** Swaps the left and right windows, or moves a lone half window across. */
     private fun swapSides(): Boolean {
-        val halves = tasks.filter { it.windowingMode == WINDOWING_MODE_FREEFORM }
+        val halves = freshFreeformTasks()
         val left = halves.firstOrNull { lastSnap[it.id] == "tiled-left" }
         val right = halves.firstOrNull { lastSnap[it.id] == "tiled-right" }
         if (left == null && right == null) return false
