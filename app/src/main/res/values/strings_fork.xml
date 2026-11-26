@@ -42,4 +42,5 @@
     <string name="fork_typing_lift_summary">For keyboard bars Android doesn\'t report, like Plektra with a physical keyboard: how far to lift the dock while typing. 0 = same as the dock\'s height</string>
     <string name="fork_shrink_while_typing_title">Shrink windows while typing</string>
     <string name="fork_shrink_while_typing_summary">When the dock moves above the keyboard, snapped windows shrink to sit above it and grow back afterwards</string>
+    <string name="fork_enable_go_home_title">Alt+D to go to the desktop</string>
 </resources>

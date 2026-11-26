@@ -10,6 +10,10 @@
             android:title="@string/enable_lock_desktop_title"
             android:defaultValue="true" />
         <SwitchPreferenceCompat
+            android:key="enable_go_home"
+            android:title="@string/fork_enable_go_home_title"
+            android:defaultValue="false" />
+        <SwitchPreferenceCompat
             android:key="enable_toggle_pin"
             android:title="@string/enable_toggle_pin_title"
             android:defaultValue="true" />

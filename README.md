@@ -18,7 +18,7 @@
 > - **Window sides survive restarts:** SmartDock remembers which half each window is in, even after it restarts.
 > - **Dock and keyboard:** when an on-screen keyboard opens, the dock moves up to sit on top of it, so both stay visible. It can also hide instead (*Settings → Multitasking → When the keyboard opens*). Keyboard bars that Android doesn't report, such as Plektra with a physical keyboard, are handled by lifting the dock while you type in a text field (height adjustable in the same settings). While the dock is lifted, snapped windows shrink to sit above it and grow back when you stop typing.
 > - **Windows fit between the status bar and the dock:** snapped, maximised and full-height windows start just below the status bar and end precisely at the top of the dock. Snapped windows re-fit if the dock's height changes.
-> - **Keyboard shortcuts:** Alt+P now pins or unpins the dock, and the Alt+P "open settings" shortcut has been removed. Alt+W no longer does anything, so it's free for the Titan 2's number keys.
+> - **Keyboard shortcuts:** Alt+P now pins or unpins the dock, and the Alt+P "open settings" shortcut has been removed. Alt+W no longer does anything, so it's free for the Titan 2's number keys. Alt+D (go to the desktop) is off by default and can be turned back on in *Settings → Keyboard shortcuts*.
 > - **Hide apps from the dock:** long-press a dock icon → *Hide from dock*, or manage the list in *Settings → Multitasking → Hidden apps*. Useful for background apps such as the Titan 2's subdisplay launcher.
 >
 > All of these can be turned on or off in **Settings → Multitasking**.

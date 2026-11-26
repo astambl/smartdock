@@ -998,7 +998,9 @@ class DockService : AccessibilityService(), OnSharedPreferenceChangeListener, On
                     )
                 )
                     launchApp(null, sharedPreferences.getString("app_rec", "")!!)
-                else if (event.keyCode == KeyEvent.KEYCODE_D)
+                else if (event.keyCode == KeyEvent.KEYCODE_D &&
+                    sharedPreferences.getBoolean("enable_go_home", false)
+                )
                     startActivity(
                         Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
